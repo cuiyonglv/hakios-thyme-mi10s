@@ -54,10 +54,15 @@ They do not test DMA/cache behavior, real UEFI block I/O or device timing.
 
 The loader cross-compiles and links as AArch64 UEFI. After isolating the
 legacy touch diagnostics, the XNU tree produced linked unstripped/stripped
-kernel files. The complete XNU build still fails in symbol-set export checks
-and LLDB macro packaging. A linked file is not a fully accepted build or a
+kernel files. With the host dsymutil selected, the remaining complete XNU build
+failure is in symbol-set export checks. A linked file is not a fully accepted build or a
 boot result. The firmware, UEFI and phone-specific storage integration remain
 unfinished. No phone partition has been flashed by this work.
+
+Further installation-header, layout, checksum and persistence-slot hardening
+is recorded in [the acceptance status](ACCEPTANCE.md), together with the
+remaining live-device checks. The default image arguments now disable
+persistence writes and limit a session to 120 seconds.
 
 ## Next investigations
 

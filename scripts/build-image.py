@@ -1,81 +1,125 @@
 #!/usr/bin/env python3
-"""Build the `darwin` partition image for the phone: the boot payload and the system image in one
-flat blob the loader understands.
+"""Build a local contiguous v1 image; reject overlap with persistence slots.
 
-    [ 4096-byte header "IOSSTOR1" ][ XNUP payload ][ system image ]
-
-The header carries what the loader needs (sizes, a SHA-256 of the payload+image) and the boot
-arguments for this run.
-
-Inputs (override with environment variables):
-  KERNEL   self-built XNU Mach-O for kona           default: $IOS/thyme/kernel-stage.bin
-  SMALL    the small image (root.apfs: /redwood)    default: $IOS/thyme/root.apfs
-  SYSTEM   the big system image (root, md0)         default: $IOS/thyme/system.apfs
-  OUT      where the image is written               default: $IOS/thyme/ios-storage/ios.img
-  CMDLINE  kernel command line (see below)          default: this port's working set
-
-The command line matters: `ufs=2` starts the loader's block service (the kernel reads the phone's
-storage through it), `ufs_write=1` lets the kernel write the var store into `darwin`,
-`var_store=1` asks init/var_store to keep /private/var there. `loader_return_after` is the run's
-own time limit (seconds) after which the kernel returns to the loader and the store is saved.
+KERNEL, SMALL, SYSTEM, OUT and CMDLINE retain the original environment API.
+The fixed layout is the author's layout, not an installation plan for a phone.
 """
 import hashlib
 import os
+from pathlib import Path
 import struct
-
-IOS = os.environ.get("IOS", os.path.expanduser("~/hackios"))
-KERNEL = os.environ.get("KERNEL", os.path.join(IOS, "thyme", "kernel-stage.bin"))
-SMALL = os.environ.get("SMALL", os.path.join(IOS, "thyme", "root.apfs"))
-SYSTEM = os.environ.get("SYSTEM", os.path.join(IOS, "thyme", "system.apfs"))
-OUT = os.environ.get("OUT", os.path.join(IOS, "thyme", "ios-storage", "ios.img"))
-
-DEFAULT_CMDLINE = (
-    "debug=0x8 cpus=7 bootcpu=7 adreno=21 adreno_keep=1 touchscreen=1 gl=1 cpufreq=1 "
-    "fb_scan=1 fb_wcomb=1 pon=8 pon_power_bit=1 pon_vol_bit=2 buttons=1 wifi=1 "
-    "wifi_mac=02:00:00:00:00:01 loader_return_after=900 ufs=2 ufs_write=1 var_store=1"
-)
-CMDLINE = os.environ.get("CMDLINE", DEFAULT_CMDLINE).encode()
+import tempfile
 
 HEADER = 4096
-MAGIC = b"IOSSTOR1"
+MAGIC = b'IOSSTOR1'
+PAYLOAD_MAX = 0x04000000
+STORE_AT = 611200 * 4096
+BOOT_LINE_LENGTH = 608
+CHUNK = 1024 * 1024
+DEFAULT_CMDLINE = (
+    'debug=0x8 cpus=7 bootcpu=7 adreno=21 adreno_keep=1 touchscreen=1 gl=1 cpufreq=1 '
+    'fb_scan=1 fb_wcomb=1 pon=8 pon_power_bit=1 pon_vol_bit=2 buttons=1 wifi=1 '
+    'wifi_mac=02:00:00:00:00:01 loader_return_after=120 ufs=2 ufs_write=0 var_store=0'
+)
 
 
 def entry(name, body):
-    """one XNUP payload entry: [16-byte name][len][reserved][body padded to 16]"""
-    return struct.pack("<16sII", name.encode(), len(body), 0) + body + b"\0" * (-len(body) % 16)
+    encoded = name.encode('ascii')
+    if not encoded or len(encoded) >= 16 or len(body) > 0xffffffff:
+        raise ValueError('invalid XNUP entry')
+    return struct.pack('<16sII', encoded, len(body), 0) + body + b'\0' * (-len(body) % 16)
 
 
-kernel = open(KERNEL, "rb").read()
-small = open(SMALL, "rb").read()
-system = open(SYSTEM, "rb").read()
+def check_apfs(path):
+    size = path.stat().st_size
+    with path.open('rb') as stream:
+        header = stream.read(48)
+    if len(header) != 48 or header[32:36] != b'NXSB':
+        raise ValueError(f'{path.name}: not an APFS container')
+    block_size, blocks = struct.unpack_from('<IQ', header, 36)
+    if block_size != 4096 or blocks == 0 or blocks * block_size != size:
+        raise ValueError(f'{path.name}: truncated or inconsistent APFS container')
+    return size
 
-payload = struct.pack("<II", 0x50554E58, 0)  # magic + size, size patched below
-body = entry("kernel", kernel) + entry("ramdisk", small) + entry("cmdline", CMDLINE + b"\0")
-payload = struct.pack("<II", 0x50554E58, len(body)) + body
 
-digest = hashlib.sha256()
-digest.update(payload)
-digest.update(system)
+def build_image(kernel_path, small_path, system_path, output_path, cmdline=DEFAULT_CMDLINE):
+    kernel_path, small_path, system_path, output_path = map(
+        Path, (kernel_path, small_path, system_path, output_path))
+    if output_path.resolve() in {p.resolve() for p in (kernel_path, small_path, system_path)}:
+        raise ValueError('output must not replace an input')
+    if not cmdline or any(c in cmdline for c in ('\0', '\n', '\r')):
+        raise ValueError('CMDLINE must be one nonempty line without NUL')
+    command = cmdline.encode('ascii') + b'\0'
+    if len(command) > BOOT_LINE_LENGTH:
+        raise ValueError('CMDLINE exceeds the kernel boot-argument limit')
+    kernel_size = kernel_path.stat().st_size
+    small_size = check_apfs(small_path)
+    system_size = check_apfs(system_path)
+    if kernel_size < 32 or kernel_size + small_size > PAYLOAD_MAX:
+        raise ValueError('kernel and small image exceed the payload window')
+    kernel = kernel_path.read_bytes()
+    magic, cpu, _, kind = struct.unpack_from('<IIII', kernel)
+    if magic != 0xfeedfacf or cpu != 0x0100000c or kind != 2:
+        raise ValueError('kernel must be an arm64 Mach-O executable')
+    body = (entry('kernel', kernel) + entry('ramdisk', small_path.read_bytes()) +
+            entry('cmdline', command))
+    payload = struct.pack('<II', 0x50554e58, len(body)) + body
+    if len(payload) > PAYLOAD_MAX:
+        raise ValueError('XNUP payload exceeds the reserved RAM window')
+    image_size = HEADER + len(payload) + system_size
+    if image_size > STORE_AT:
+        raise ValueError(f'image overlaps persistence slots by {image_size - STORE_AT} bytes; '
+                         'rebuild smaller images or explicitly redesign the shared layout')
+    header = bytearray(HEADER)
+    header[:8] = MAGIC
+    struct.pack_into('<IIQQQQQQ', header, 8, 1, 0, len(payload), system_size,
+                     system_size, 0, 0, 0)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = None
+    try:
+        with tempfile.NamedTemporaryFile(dir=output_path.parent, prefix=output_path.name + '.',
+                                         suffix='.tmp', delete=False) as stream:
+            temporary = Path(stream.name)
+            stream.write(header)
+            stream.write(payload)
+            digest = hashlib.sha256(payload)
+            copied = 0
+            with system_path.open('rb') as system:
+                while chunk := system.read(CHUNK):
+                    copied += len(chunk)
+                    if copied > system_size:
+                        raise ValueError('system image grew while copying')
+                    stream.write(chunk)
+                    digest.update(chunk)
+            if copied != system_size:
+                raise ValueError('system image changed or was truncated while copying')
+            header[96:128] = digest.digest()
+            stream.seek(0)
+            stream.write(header)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary, output_path)
+        temporary = None
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
+    return {'payload_bytes': len(payload), 'system_bytes': system_size,
+            'image_bytes': image_size, 'sha256_payload_system': digest.hexdigest()}
 
-hdr = bytearray(HEADER)
-hdr[0:8] = MAGIC
-struct.pack_into("<I", hdr, 8, 1)                 # version
-struct.pack_into("<I", hdr, 12, 0)                # boot_mode: 0 = boot iOS, 1 = stay in the loader (USB)
-struct.pack_into("<Q", hdr, 16, len(payload))     # payload length
-struct.pack_into("<Q", hdr, 24, len(system))      # system image length
-struct.pack_into("<Q", hdr, 32, len(system))      # (single-region layout: part1 = everything)
-struct.pack_into("<Q", hdr, 40, 0)
-struct.pack_into("<Q", hdr, 48, 0)
-struct.pack_into("<Q", hdr, 56, 0)
-hdr[96:128] = digest.digest()
 
-image = bytes(hdr) + payload + system
-os.makedirs(os.path.dirname(OUT), exist_ok=True)
-with open(OUT, "wb") as f:
-    f.write(image)
+def main():
+    base = Path(os.environ.get('IOS', str(Path.home() / 'hackios'))) / 'thyme'
+    result = build_image(os.environ.get('KERNEL', base / 'kernel-stage.bin'),
+                         os.environ.get('SMALL', base / 'root.apfs'),
+                         os.environ.get('SYSTEM', base / 'system.apfs'),
+                         os.environ.get('OUT', base / 'ios-storage/ios.img'),
+                         os.environ.get('CMDLINE', DEFAULT_CMDLINE))
+    for key, value in result.items():
+        print(f'{key}: {value}')
 
-print("payload : kernel %d + small %d + cmdline %d = %d bytes"
-      % (len(kernel), len(small), len(CMDLINE), len(payload)))
-print("system  : %d bytes" % len(system))
-print("image   : %d bytes -> %s" % (len(image), OUT))
-print("cmdline : %s" % CMDLINE.decode())
+
+if __name__ == '__main__':
+    try:
+        main()
+    except (OSError, ValueError) as error:
+        raise SystemExit(f'build-image: {error}')

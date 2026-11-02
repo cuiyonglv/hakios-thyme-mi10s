@@ -448,6 +448,7 @@ read_head(int slot, struct head *into)
 	}
 	if (memcmp(h->magic, HEAD_MAGIC, sizeof(h->magic)) != 0 || h->version != HEAD_VERSION ||
 	    h->slot != (uint32_t)slot || h->bytes > (uint64_t)SLOT_BYTES - BLOCK ||
+	    h->entries > h->bytes / sizeof(struct entry) ||
 	    h->head_crc != head_checksum(h)) {
 		return 0;
 	}
@@ -470,6 +471,28 @@ newest(struct head *out_head)
 		if (best < 0 || h.generation > out_head->generation) {
 			best = slot;
 			*out_head = h;
+		}
+	}
+	return best;
+}
+
+static int pass(const struct head *h, int make);
+
+/* Saving must preserve the newest complete archive, not just a valid header.
+ * A torn newer slot may have a good header but bad data; choosing it would
+ * overwrite the only older archive that load can still recover. */
+static int
+newest_verified(struct head *out_head)
+{
+	int best = -1;
+
+	for (int slot = 0; slot < SLOTS; slot++) {
+		struct head h;
+
+		if (read_head(slot, &h) && pass(&h, 0) &&
+		    (best < 0 || h.generation > out_head->generation)) {
+			*out_head = h;
+			best = slot;
 		}
 	}
 	return best;
@@ -823,7 +846,7 @@ save(void)
 	static uint8_t block[BLOCK];
 
 	memset(&old, 0, sizeof(old));
-	best = newest(&old);
+	best = newest_verified(&old);
 	slot = best < 0 ? 0 : (best + 1) % SLOTS;
 	printf("var_store: saving into slot %d (slot %d holds generation %llu)\n", slot, best,
 	    best < 0 ? 0ULL : (unsigned long long)old.generation);

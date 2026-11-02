@@ -11,6 +11,7 @@
  */
 #include "efi.h"
 #include "identity.h"         /* who iOS shall think we are: from the iPhone's own device tree (mkidentity.py) */
+#include "sha256.h"
 
 /* ------------------------------------------------------------------------ */
 /* Fixed conventions shared with the boot shim, the packer and the kernel   */
@@ -60,7 +61,10 @@ struct ios_storage_header {
 	uint64_t flags;
 	uint8_t  reserved[32];
 	uint8_t  sha256[32];
+	uint8_t  padding[IOS_HEADER_BYTES - 128];
 };
+_Static_assert(sizeof(struct ios_storage_header) == IOS_HEADER_BYTES,
+    "installation header read must fit its destination");
 #define CHECKPOINT_SELFTEST 999
 #define PANIC_LOG_SIZE      0x80000u
 #define NVRAM_BANK_SIZE     0x2000u
@@ -4035,12 +4039,26 @@ find_partition_bio(const char16 *want)
 static int
 read_partition_bytes(efi_block_io *bio, uint64_t at, uint64_t len, uint8_t *dest)
 {
-	uint64_t bs = bio->media->block_size;
+	uint64_t bs, total;
 	uint64_t done = 0;
 
-	if (bio == NULL || bs == 0 || bs > BLOCK_BUFFER_SIZE) {
+	if (bio == NULL || bio->media == NULL || bio->read_blocks == NULL ||
+	    (len != 0 && dest == NULL)) {
+		return 0;
+	}
+	bs = bio->media->block_size;
+	if (bs == 0 || bs > BLOCK_BUFFER_SIZE || BLOCK_BUFFER_SIZE % bs != 0 ||
+	    bio->media->last_block >= (~0ULL / bs)) {
 		print("ios: bad partition read (%d bytes at %x)\n", len, at);
 		return 0;
+	}
+	total = (bio->media->last_block + 1) * bs;
+	if (at > total || len > total - at) {
+		print("ios: read outside partition (%d bytes at %x)\n", len, at);
+		return 0;
+	}
+	if (len == 0) {
+		return 1;
 	}
 	if ((at % bs) != 0) {
 		uint64_t head = bs - (at % bs);
@@ -4075,6 +4093,57 @@ read_partition_bytes(efi_block_io *bio, uint64_t at, uint64_t len, uint8_t *dest
 	return 1;
 }
 
+/* Validate the contiguous v1 layout before using any lengths from storage. */
+static int
+ios_header_valid(const struct ios_storage_header *hdr, uint64_t partition_bytes)
+{
+	uint64_t room;
+
+	if (memcmp(hdr->magic, IOS_STORAGE_MAGIC, 8) != 0 || hdr->version != 1 ||
+	    hdr->boot_mode > 1 || hdr->flags != 0 || hdr->part2_len != 0 ||
+	    hdr->part3_len != 0 || hdr->part1_len != hdr->system_len ||
+	    hdr->payload_len == 0 || hdr->payload_len > PAYLOAD_MAX_SIZE ||
+	    hdr->system_len == 0 || partition_bytes < IOS_HEADER_BYTES) {
+		return 0;
+	}
+	room = partition_bytes - IOS_HEADER_BYTES;
+	if (hdr->payload_len > room || hdr->system_len > room - hdr->payload_len) {
+		return 0;
+	}
+	/* System bytes must never occupy the two alternating persistence slots. */
+	room = BLOCK_WRITE_FIRST * 4096ULL - IOS_HEADER_BYTES;
+	return hdr->payload_len <= room && hdr->system_len <= room - hdr->payload_len;
+}
+
+static void
+ios_hash_bytes(SHA256_CTX *hash, const uint8_t *data, uint64_t length)
+{
+	while (length != 0) {
+		size_t take = length > (1u << 20) ? (1u << 20) : (size_t)length;
+
+		sha256_update(hash, data, take);
+		data += take;
+		length -= take;
+		if (wdt_armed) {
+			wdt_pet();
+		}
+	}
+}
+
+static int
+ios_image_digest_valid(const struct ios_storage_header *hdr, const uint8_t *payload,
+    const uint8_t *system)
+{
+	SHA256_CTX hash;
+	uint8_t digest[SHA256_BLOCK_SIZE];
+
+	sha256_init(&hash);
+	ios_hash_bytes(&hash, payload, hdr->payload_len);
+	ios_hash_bytes(&hash, system, hdr->system_len);
+	sha256_final(&hash, digest);
+	return memcmp(digest, hdr->sha256, sizeof(digest)) == 0;
+}
+
 /*
  * Boot the iOS installation from its own partition ("ios", carved off the end of userdata):
  * header at 0, the XNUP payload after it, the system image after that.
@@ -4095,6 +4164,10 @@ ios_storage_try_boot(void)
 		return;
 	}
 	if (!read_partition_bytes(ios, 0, IOS_HEADER_BYTES, (uint8_t *)&hdr)) {
+		return;
+	}
+	if (!ios_header_valid(&hdr, (ios->media->last_block + 1) * ios->media->block_size)) {
+		print("ios: invalid, truncated or overlapping installation; staying in loader\n");
 		return;
 	}
 	ios_colour(0xFFFF0000);                /* blue: header read */
@@ -4139,6 +4212,11 @@ ios_storage_try_boot(void)
 	print("ios: putting the system image at %x (%d bytes from %x)\n",
 	    win_base + RESIDENT_RD_OFFSET, hdr.system_len, sys_at);
 	if (!read_partition_bytes(ios, sys_at, hdr.system_len, dest)) {
+		return;
+	}
+	print("ios: verifying payload and system SHA-256\n");
+	if (!ios_image_digest_valid(&hdr, (const uint8_t *)PAYLOAD_BASE, dest)) {
+		print("ios: installation checksum mismatch; staying in loader\n");
 		return;
 	}
 	ios_colour(0xFFFF00FF);                /* magenta: system image read */

@@ -25,3 +25,5 @@ out/
 # local state
 .vscode/
 *.tmp
+__pycache__/
+*.pyc

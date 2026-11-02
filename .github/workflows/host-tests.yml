@@ -1,0 +1,24 @@
+name: Host regression tests
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  storage-and-images:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Image packer and atomic output
+        run: python3 scripts/test-build-image.py
+      - name: Header and partition reader with sanitizers
+        run: python3 scripts/test-loader-image.py
+      - name: SHA-256 known answers and binary inputs
+        run: python3 scripts/test-sha256.py
+      - name: Mailbox concurrency
+        run: python3 scripts/test-storage-mailbox.py
+      - name: Loader log buffer ownership
+        run: python3 scripts/test-loader-log-buffer.py
+      - name: Persistence slot selection and fallback
+        run: python3 scripts/test-var-store-selection.py

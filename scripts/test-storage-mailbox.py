@@ -110,6 +110,7 @@ with tempfile.TemporaryDirectory(prefix='thyme-mailbox-') as temp:
     old = old.replace('\tif (ufshc_list_in()) {',
                       '\tlck_mtx_lock(&ufs_lock);\n\tif (ufshc_list_in()) {', 1)
     regression = run(old, directory, 'before_fix')
-    if regression.returncode == 0 or 'allocations' not in regression.stderr:
-        raise SystemExit('Regression harness did not detect the old allocation race')
+    detected = 'allocations' in regression.stderr or 'data[i]' in regression.stderr
+    if regression.returncode == 0 or not detected:
+        raise SystemExit('Regression harness did not detect the old allocation race: ' + regression.stderr)
     print('PASS: harness detects the original first-allocation race')
