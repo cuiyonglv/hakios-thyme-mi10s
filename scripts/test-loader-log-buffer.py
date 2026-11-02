@@ -2,10 +2,12 @@
 """Host test: actual write_logs must preserve an outstanding mailbox reply."""
 from pathlib import Path
 import os
+import resource
 import subprocess
 import tempfile
 
 root = Path(__file__).resolve().parents[1]
+resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
 source = (root / 'src/loader/loader.c').read_text()
 start = source.index('static void\nwrite_logs(')
 end = source.index('\nstatic void\nflush_log(', start)

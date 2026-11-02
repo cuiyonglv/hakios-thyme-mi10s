@@ -6,10 +6,12 @@ the native-controller exclusion. No device or firmware is accessed.
 """
 from pathlib import Path
 import os
+import resource
 import subprocess
 import tempfile
 
 root = Path(__file__).resolve().parents[1]
+resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
 source = (root / 'src/kernel/bsd/dev/redwood_ufs.c').read_text()
 start = source.index('static int\nufs_read_mailbox(')
 end = source.index('\n/* The same, through', start)
