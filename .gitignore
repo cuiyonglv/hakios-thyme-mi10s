@@ -27,3 +27,4 @@ out/
 *.tmp
 __pycache__/
 *.pyc
+src/loader/identity.h

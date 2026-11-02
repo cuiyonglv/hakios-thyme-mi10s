@@ -484,18 +484,21 @@ static int pass(const struct head *h, int make);
 static int
 newest_verified(struct head *out_head)
 {
-	int best = -1;
+	int best = newest(out_head);
+
+	if (best < 0 || pass(out_head, 0)) {
+		return best;
+	}
 
 	for (int slot = 0; slot < SLOTS; slot++) {
 		struct head h;
 
-		if (read_head(slot, &h) && pass(&h, 0) &&
-		    (best < 0 || h.generation > out_head->generation)) {
+		if (slot != best && read_head(slot, &h) && pass(&h, 0)) {
 			*out_head = h;
-			best = slot;
+			return slot;
 		}
 	}
-	return best;
+	return -1;
 }
 
 /* ---- packing ---- */
@@ -846,6 +849,7 @@ save(void)
 	static uint8_t block[BLOCK];
 
 	memset(&old, 0, sizeof(old));
+	printf("var_store: verifying the previous archive before choosing a save slot\n");
 	best = newest_verified(&old);
 	slot = best < 0 ? 0 : (best + 1) % SLOTS;
 	printf("var_store: saving into slot %d (slot %d holds generation %llu)\n", slot, best,
@@ -1177,6 +1181,7 @@ load(void)
 	int best;
 
 	memset(&h, 0, sizeof(h));
+	printf("var_store: checking saved slot headers\n");
 	best = newest(&h);
 	if (best < 0) {
 		printf("var_store: no store yet: /private/var stays as init made it\n");
@@ -1186,6 +1191,7 @@ load(void)
 	    (unsigned long long)h.generation, (unsigned long long)h.seconds,
 	    (unsigned long long)h.entries, (unsigned long long)h.bytes);
 	/* read once to prove the checksum, and only then make anything */
+	printf("var_store: validating the archive before restore\n");
 	if (!pass(&h, 0)) {
 		struct head other;
 		int left = -1;
@@ -1205,6 +1211,7 @@ load(void)
 		printf("var_store: slot %d is good after all: generation %llu\n", left,
 		    (unsigned long long)h.generation);
 	}
+	printf("var_store: restoring the validated archive\n");
 	if (!pass(&h, 1)) {
 		printf("var_store: the archive read differently the second time: what was made stays\n");
 		return 0;

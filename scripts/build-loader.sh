@@ -14,11 +14,12 @@
 set -e
 
 IOS=${IOS:-$HOME/hackios}
+ROOT=$(cd "$(dirname "$0")/.." && pwd)
 SRC_IMG=${1:-$IOS/thyme/thyme-start.img}
-LOADER_SRC=${LOADER_SRC:-$HOME/xnuloader}          # the base project's xnuloader/ + our patch
+LOADER_SRC=${LOADER_SRC:-$ROOT/src/loader}        # build this checkout's validated loader
 OUT_IMG=${OUT_IMG:-$IOS/thyme/thyme-start-new.img}
 
-cd "$(dirname "$0")/.."
+cd "$ROOT"
 
 echo "== building loader.efi"
 ( cd "$LOADER_SRC" && bash build.sh )
