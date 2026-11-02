@@ -2102,6 +2102,13 @@ bringup_test(uint32_t mode)
 {
 	uint64_t c;
 
+#ifndef REDWOOD_FTS_VENDOR_LIBRARY
+	if (mode == 29 || mode == 30 || mode == 31 || mode == 33 || mode == 36) {
+		fts_say("bringup: mode %u needs the unavailable legacy FTS vendor library\n", mode);
+		return;
+	}
+#endif
+
 	tlmm = ml_io_map(0x0f500000UL, 0x100000UL);            /* gpio block: 0x500000 into the DT window */
 	gcc = ml_io_map(GCC_PHYS, GCC_SIZE);
 	se = ml_io_map(SE_PHYS, SE_SIZE);
@@ -2162,6 +2169,7 @@ bringup_test(uint32_t mode)
 
 	/* reset: low for 15 ms, high, then 150 ms for the chip's firmware to come up
 	 * (bringup=14 skips it, to see what the chip does untouched; 33 keeps Android's state) */
+#ifdef REDWOOD_FTS_VENDOR_LIBRARY
 	if (mode == 33) {
 		fts_say("warm: leaving rails and reset exactly as the boot chain left them\n");
 	} else if (mode == 15) {
@@ -2222,6 +2230,7 @@ bringup_test(uint32_t mode)
 		(void)fts_port_warm_frame();
 		panic("warm: done");
 	}
+#endif
 
 	if (mode == 32) {
 		static uint8_t regs[0x180];
@@ -2466,6 +2475,7 @@ bringup_test(uint32_t mode)
 		panic("thyme frame: done");
 	}
 
+#ifdef REDWOOD_FTS_VENDOR_LIBRARY
 	if (mode == 36) {
 		/* upstream FTS5 init, then read the raw frame over and over: is it live now? */
 		static const uint8_t cmds[4] = { 0x91, 0xa3, 0xa4, 0xa2 };
@@ -2502,6 +2512,7 @@ bringup_test(uint32_t mode)
 		fts_say("frame live: done, first %d\n", first);
 		panic("frame live: done");
 	}
+#endif
 
 	if (mode == 35) {
 		/* upstream Linux STM FTS5 bring-up */
@@ -2545,11 +2556,13 @@ bringup_test(uint32_t mode)
 				}
 				events++;
 			}
+#ifdef REDWOOD_FTS_VENDOR_LIBRARY
 			if ((i % 3000) == 2999) {
 				extern int fts_port_frame_sum(void);
 				fts_say("upstream FTS5: %u events so far, frame sum %d, int %u\n",
 				    events, fts_port_frame_sum(), gpio_get(FTS_PIN_INT));
 			}
+#endif
 			sleep_ms(2);
 		}
 		fts_say("upstream FTS5: %u events total\n", events);
@@ -2596,6 +2609,7 @@ bringup_test(uint32_t mode)
 		panic("every event: done");
 	}
 
+#ifdef REDWOOD_FTS_VENDOR_LIBRARY
 	if (mode == 31) {
 		extern int fts_port_selftest(void);
 		uint32_t base = rpmh_address("ldoc1");
@@ -2656,6 +2670,7 @@ bringup_test(uint32_t mode)
 		fts_say("port_test: returned\n");
 		panic("port_test: done");
 	}
+#endif
 
 	if (mode == 28) {
 		static const uint8_t hw_pre[7] = { 0xFA, 0x20, 0x00, 0x00, 0x00, 0x00, 0x00 };

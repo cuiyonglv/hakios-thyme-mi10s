@@ -322,9 +322,11 @@ find_log_partition(void)
  * fetches over USB (fastboot get_staged).
  */
 static char out_buf[2 * 1024 * 1024];
-/* the storage's reads for the kernel land here (block_poll); also where the log is read back */
+/* The kernel mailbox owns this buffer until its reply has been consumed. */
 #define BLOCK_BUFFER_SIZE  (4u << 20)
 static uint8_t block_buffer[BLOCK_BUFFER_SIZE] __attribute__((aligned(0x2000)));
+/* Log verification can run between a mailbox reply and the kernel's copy. */
+static uint8_t log_verify[sizeof(out_buf) + 8192] __attribute__((aligned(0x2000)));
 static const char *staged_data = out_buf;   /* what "upload" sends: normally the log in out_buf */
 static uint64_t staged_len;
 
@@ -396,9 +398,10 @@ write_logs(const char *klog, uint64_t klog_len)
 		 * driver must leave possible (the controller is shared with this one). The line goes into
 		 * the copy the host fetches over USB, not into the partition, which already has the rest.
 		 */
-		if (len <= sizeof(block_buffer)) {
-			rs = bio->read_blocks(bio, bio->media->media_id, 0, len, block_buffer);
-			same = !EFI_ERROR(rs) && memcmp(block_buffer, out_buf, len) == 0;
+		if (len <= sizeof(log_verify)) {
+			rs = bio->read_blocks(bio, bio->media->media_id, 0, len, log_verify);
+			flush_dcache((uint64_t)(uintptr_t)log_verify, (uint64_t)(uintptr_t)log_verify + len);
+			same = !EFI_ERROR(rs) && memcmp(log_verify, out_buf, len) == 0;
 		}
 	}
 	print("log: %d bytes written to logdump (%x), read back %s (%x)\n", len, ws,

@@ -635,18 +635,10 @@ bsd/skywalk/packet/packet_kern.c		optional skywalk
 bsd/skywalk/packet/pbufpool.c			optional skywalk
 bsd/skywalk/packet/pbufpool_kern.c		optional skywalk
 bsd/dev/cpu_copy_in_cksum_gen.c			optional skywalk
-bsd/dev/fts_port/ftsError.c	standard
-bsd/dev/fts_port/ftsTime.c	standard
-bsd/dev/fts_port/ftsTool.c	standard
-bsd/dev/fts_port/ftsFrame.c	standard
-bsd/dev/fts_port/ftsGesture.c	standard
-bsd/dev/fts_port/ftsCompensation.c	standard
-bsd/dev/fts_port/ftsFlash.c	standard
-bsd/dev/fts_port/ftsCore.c	standard
-bsd/dev/fts_port/ftsIO.c	standard
-bsd/dev/fts_port/fts_glue.c	standard
-bsd/dev/fts_port/fts_platform.c	standard
-bsd/dev/fts_port/fts_touch.c	standard
+# The optional legacy FTS diagnostics require a separately supplied vendor tree.
+# Normal touchscreen=1 input uses redwood_st_touch.c, without that dependency.
+# To restore the old diagnostics, supply their sources and define
+# REDWOOD_FTS_VENDOR_LIBRARY when compiling redwood_goodix.c.
 bsd/dev/redwood_st_touch.c	standard
 bsd/dev/redwood_st_touch_boost.c	standard
 bsd/dev/redwood_display.c	standard

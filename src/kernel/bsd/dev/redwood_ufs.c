@@ -452,13 +452,14 @@ ufs_read_mailbox(uint32_t part, uint64_t offset, uint8_t *dst, uint64_t len)
 	static uint8_t *bounce;
 	int error = 0;
 
+	lck_mtx_lock(&ufs_lock);
 	if (bounce == NULL) {
 		bounce = kalloc_data(ufs_buffer_size, Z_WAITOK);
 		if (bounce == NULL) {
+			lck_mtx_unlock(&ufs_lock);
 			return ENOMEM;
 		}
 	}
-	lck_mtx_lock(&ufs_lock);
 	if (ufshc_list_in()) {
 		/* this kernel's own transfer list is in the controller: UEFI's driver must not be asked to ring */
 		if (ufs_mailbox_refused++ < 4) {

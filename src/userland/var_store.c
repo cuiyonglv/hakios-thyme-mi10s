@@ -1376,15 +1376,8 @@ main(int argc, char **argv, char **envp)
 			printf("DIAG var_store: no bootargs (%s)\n", strerror(errno));
 		}
 	}
-	{
-		int t = open(DEVICE, O_RDWR, 0);
-		if (t < 0) {
-			printf("DIAG var_store: %s open(O_RDWR) failed: %s\n", DEVICE, strerror(errno));
-		} else {
-			printf("DIAG var_store: %s opens for writing\n", DEVICE);
-			close(t);
-		}
-	}
+	/* load/show must only open the store read-only. Do not probe the write
+	 * service during early boot: it is unnecessary for restoring the archive. */
 	crc_init();
 	if (strcmp(what, "stamp") == 0) {
 		return stamp(argc > 2 ? argv[2] : "/private/var/redwood-stamp") ? 0 : 1;
