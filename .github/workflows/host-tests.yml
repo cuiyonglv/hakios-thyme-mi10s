@@ -30,5 +30,7 @@ jobs:
         run: python3 scripts/test-var-store-unpack.py
       - name: Persistence archive roundtrip and interrupted saves
         run: python3 scripts/test-var-store-roundtrip.py
+      - name: Init restore supervision and service gate
+        run: python3 scripts/test-restore-guard.py
       - name: Kernel export audit semantics
         run: python3 scripts/test-kernel-export-audit.py
