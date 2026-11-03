@@ -49,8 +49,8 @@
 
 #define BLOCK           4096
 #define BUFFER          (4u << 20)              /* the loader's own buffer: one request a write */
-#define STORE_AT        THYME_STORE_AT
-#define SLOT_BYTES      THYME_STORE_SLOT_BYTES
+#define STORE_AT        storage_offset
+#define SLOT_BYTES      storage_slot_bytes
 #define SLOTS           ((int)THYME_STORE_SLOTS)
 #define DEVICE          "/dev/rufs_darwin"
 #define ROOT            "/private/var"
@@ -106,6 +106,7 @@ struct entry {
 	int64_t  mtime_sec;
 	uint64_t size;                  /* a file's contents, a link's target, a hard link's first name */
 };
+static uint64_t storage_offset, storage_slot_bytes;
 
 /* ---- the kernel's side of it: the boot-arg, the handshake, the claim ---- */
 
@@ -182,6 +183,23 @@ release(void)
 	(void)sysctl_set_int("kern.redwood.var_busy", 0);
 }
 
+static int
+storage_layout_init(void)
+{
+	struct thyme_store_info info;
+	size_t size = sizeof(info);
+	storage_offset = storage_slot_bytes = 0;
+	memset(&info, 0, sizeof(info));
+	if (sysctlbyname("kern.redwood.var_layout", &info, &size, NULL, 0) != 0 ||
+	    size != sizeof(info) || !thyme_store_info_valid(&info)) {
+		printf("var_store: no verified runtime layout; refusing to guess a storage offset\n");
+		return 0;
+	}
+	storage_offset = info.layout.store_at;
+	storage_slot_bytes = info.layout.slot_bytes;
+	return 1;
+}
+
 /* ---- checksum (the same one the loader reads a write back with) ---- */
 
 static uint32_t crc_table[256];
@@ -244,6 +262,11 @@ static int
 device_write(off_t where, const void *data, uint64_t n)
 {
 	const uint8_t *p = data;
+	uint64_t end = STORE_AT + SLOTS * SLOT_BYTES;
+	if (where < 0 || (uint64_t)where < STORE_AT || (uint64_t)where > end ||
+	    n > end - (uint64_t)where) {
+		return 0;
+	}
 
 	while (n > 0) {
 		ssize_t wrote = pwrite(fd, p, (size_t)n, where);
@@ -264,6 +287,11 @@ static int
 device_read(off_t where, void *data, uint64_t n)
 {
 	uint8_t *p = data;
+	uint64_t end = STORE_AT + SLOTS * SLOT_BYTES;
+	if (where < 0 || (uint64_t)where < STORE_AT || (uint64_t)where > end ||
+	    n > end - (uint64_t)where) {
+		return 0;
+	}
 
 	while (n > 0) {
 		ssize_t got = pread(fd, p, (size_t)n, where);
@@ -1441,6 +1469,9 @@ main(int argc, char **argv, char **envp)
 	crc_init();
 	if (strcmp(what, "stamp") == 0) {
 		return stamp(argc > 2 ? argv[2] : "/private/var/redwood-stamp") ? 0 : 1;
+	}
+	if (!storage_layout_init()) {
+		return 1;
 	}
 	buffer = mmap(NULL, BUFFER, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
 	links = mmap(NULL, LINKS * sizeof(*links), PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);

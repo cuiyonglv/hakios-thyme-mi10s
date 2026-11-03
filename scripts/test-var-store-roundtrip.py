@@ -11,8 +11,6 @@ import tempfile
 
 source = (Path(__file__).resolve().parents[1] / 'src/userland/var_store.c').read_text()
 definitions = source[source.index('#define BLOCK '):source.index('/* ---- the kernel\'s side')]
-definitions = definitions.replace('#define STORE_AT        THYME_STORE_AT', '#define STORE_AT        4096LL')
-definitions = definitions.replace('#define SLOT_BYTES      THYME_STORE_SLOT_BYTES', '#define SLOT_BYTES      0x100000LL')
 definitions = definitions.replace('#define SLOTS           ((int)THYME_STORE_SLOTS)', '#define SLOTS           2')
 definitions = definitions.replace('#define BUFFER          (4u << 20)', '#define BUFFER          8192u')
 definitions = definitions.replace('#define ROOT            "/private/var"', '#define ROOT            "tree"')
@@ -84,6 +82,7 @@ static void check_content(unsigned seed) {
     assert(memcmp(target,"db/data",7)==0);
 }
 int main(void) {
+    storage_offset=4096;storage_slot_bytes=0x100000;
     fd=open("store.sparse",O_RDWR|O_CREAT|O_EXCL,0600);assert(fd>=0);
     assert(ftruncate(fd,STORE_AT+SLOTS*SLOT_BYTES)==0);
     buffer=malloc(BUFFER);already=malloc(BUFFER);links=calloc(LINKS,sizeof(*links));

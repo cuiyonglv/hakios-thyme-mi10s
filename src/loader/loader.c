@@ -1536,7 +1536,7 @@ ufs_survey(void)
  * for a write, cleans its own lines of it before it asks.
  */
 #define BLOCK_MAGIC        0x4b434f4c42574452ULL       /* "RDWBLOCK" */
-#define BLOCK_VERSION      3
+#define BLOCK_VERSION      THYME_BLOCK_PROTOCOL_VERSION
 #define BLOCK_MAX_PARTS    160
 #define BLOCK_MAX_UNITS    16
 #define BLOCK_PART_UNIT    1u                          /* the entry is a whole logical unit, not a partition */
@@ -1582,15 +1582,15 @@ struct loader_block {
 	uint64_t buffer_pa;
 	/*
 	 * Which partition takes writes this run, as its index among part[] plus one (0: none), and
-	 * from which of its blocks. They are here, in what was padding before ask, so that the page
-	 * stays the size and the version it was: one phone is shared between working copies, and a
-	 * kernel built before writes existed must go on reading through a loader built after them,
-	 * and the other way about -- a kernel that does not know these fields leaves ask.op zero,
-	 * which is a read, and a loader that does not know them leaves these zero, which is no write.
+	 * from which of its blocks. Version4 fills pre-ask padding with a verified layout and its
+	 * source partition association. Matching loader/kernel versions are required; an older
+	 * consumer must not guess the new store offset. Request/answer cache-line offsets stay fixed.
 	 */
 	uint32_t write_part_plus_one;
 	uint32_t write_reserved;
 	uint64_t write_first;
+	struct thyme_store_info storage;
+	uint32_t storage_part_plus_one;
 	/* written by the kernel: what it wants, then request is advanced */
 	struct {
 		volatile uint32_t request;
@@ -1639,8 +1639,11 @@ static void block_io2_probe(efi_handle h, efi_block_io *bio);
 static int block_probe_requested;       /* ufs_probe=1: block_io2_probe() at block_start() */
 static efi_block_io *block_bios[BLOCK_MAX_PARTS];
 static int block_enabled;
+static uint32_t block_part_count;
 static int block_write_requested;       /* ufs_write=1 on the command line */
 static int block_write_part = -1;       /* the only partition a write may reach; -1: none, writes refused */
+static struct thyme_store_info pending_storage, run_storage;
+static efi_block_io *pending_storage_bio, *run_storage_bio;
 static uint64_t block_writes, block_writes_refused, block_write_bytes;
 
 /* the bytes of a device path before its end node */
@@ -1924,8 +1927,25 @@ block_is_darwin(const efi_partition_info *info, const efi_block_io *bio, const s
 		return 0;
 	}
 	print("ufs: darwin (LBA %d..%d of unit 0): its blocks from %d on may be written this run\n",
-	    info->start_lba, info->end_lba, BLOCK_WRITE_FIRST);
+	    info->start_lba, info->end_lba, run_storage.layout.store_at / THYME_STORAGE_BLOCK_SIZE);
 	return 1;
+}
+
+static void
+block_storage_begin_run(void)
+{
+	run_storage = pending_storage;
+	run_storage_bio = pending_storage_bio;
+	memset(&pending_storage, 0, sizeof(pending_storage));
+	pending_storage_bio = NULL;
+	if (run_storage_bio == NULL || !thyme_store_info_valid(&run_storage)) {
+		memset(&run_storage, 0, sizeof(run_storage));
+		run_storage_bio = NULL;
+	}
+	block_enabled = 0;
+	block_part_count = 0;
+	block_write_requested = 0;
+	block_write_part = -1;
 }
 
 static void
@@ -1944,6 +1964,7 @@ block_start(void)
 		uint8_t lun;
 	} units[BLOCK_MAX_UNITS];
 	uint64_t nunits = 0;
+	unsigned darwin_names = 0;
 
 	memset(&block_shared, 0, sizeof(block_shared));
 	block_tables();
@@ -1981,6 +2002,9 @@ block_start(void)
 			continue;
 		}
 		ufs_name(info, bp->name, sizeof(bp->name));
+		if (memcmp(bp->name, "darwin", 7) == 0) {
+			darwin_names++;
+		}
 		bp->block_size = bio->media->block_size;
 		bp->blocks = bio->media->last_block + 1;
 		bp->start_lba = info->start_lba;
@@ -1998,8 +2022,16 @@ block_start(void)
 				}
 			}
 		}
-		if (block_write_requested && block_is_darwin(info, bio, bp)) {
-			block_write_part = (int)block_shared.parts;
+		if (bio == run_storage_bio && thyme_store_info_valid(&run_storage) &&
+		    memcmp(bp->name, "darwin", 7) == 0 &&
+		    bp->block_size == run_storage.layout.block_bytes &&
+		    bp->blocks <= ~0ULL / bp->block_size &&
+		    bp->blocks * bp->block_size == run_storage.partition_bytes) {
+			block_shared.storage = run_storage;
+			block_shared.storage_part_plus_one = block_shared.parts + 1;
+			if (block_write_requested && block_is_darwin(info, bio, bp)) {
+				block_write_part = (int)block_shared.parts;
+			}
 		}
 		block_bios[block_shared.parts++] = bio;
 		if (block_probe_requested && bp->name[0] == 'd' && bp->name[1] == 'a' && bp->name[2] == 'r' &&
@@ -2045,11 +2077,17 @@ block_start(void)
 	/* per run, like the two above: this loader stays resident across runs, and a tally carried
 	 * over from the run before is read as this one's */
 	block_writes = block_writes_refused = block_write_bytes = 0;
+	if (darwin_names != 1) {
+		memset(&block_shared.storage, 0, sizeof(block_shared.storage));
+		block_shared.storage_part_plus_one = 0;
+		block_write_part = -1;
+	}
 	if (block_write_part >= 0) {
 		block_shared.write_part_plus_one = (uint32_t)block_write_part + 1;
-		block_shared.write_first = BLOCK_WRITE_FIRST;
+		block_shared.write_first = run_storage.layout.store_at / THYME_STORAGE_BLOCK_SIZE;
 	}
 	block_shared.magic = BLOCK_MAGIC;
+	block_part_count = block_shared.parts;
 	block_shared.version = BLOCK_VERSION;
 	block_shared.size = sizeof(block_shared);
 	block_shared.buffer_size = BLOCK_BUFFER_SIZE;
@@ -2161,11 +2199,16 @@ block_poll(void)
 	op = block_shared.ask.op;
 	started = READ_SYSREG(CNTVCT_EL0);
 	bytes = 0;
-	if (part < block_shared.parts && count != 0 && count <= BLOCK_BUFFER_SIZE / block_shared.part[part].block_size &&
-	    lba < block_shared.part[part].blocks && count <= block_shared.part[part].blocks - lba) {
+	if (part < block_part_count && part < BLOCK_MAX_PARTS && block_bios[part] != NULL &&
+	    block_bios[part]->media != NULL && block_bios[part]->read_blocks != NULL &&
+	    block_bios[part]->media->block_size != 0 &&
+	    block_bios[part]->media->block_size <= BLOCK_BUFFER_SIZE &&
+	    block_bios[part]->media->last_block < ~0ULL / block_bios[part]->media->block_size &&
+	    count != 0 && count <= BLOCK_BUFFER_SIZE / block_bios[part]->media->block_size &&
+	    lba <= block_bios[part]->media->last_block && count <= block_bios[part]->media->last_block - lba + 1) {
 		efi_block_io *bio = block_bios[part];
 
-		bytes = count * block_shared.part[part].block_size;
+		bytes = count * bio->media->block_size;
 		if (!hc_list_is_uefis()) {
 			/* the kernel's own list is in: UEFI's driver must not ring now (the kernel should not ask) */
 			if (hc_refused_reads++ < 4) {
@@ -2174,7 +2217,8 @@ block_poll(void)
 			s = 0x800000000000000FULL;      /* EFI_ACCESS_DENIED */
 			bytes = 0;
 		} else if (op == BLOCK_OP_WRITE) {
-			if (block_write_part < 0 || part != (uint32_t)block_write_part || lba < BLOCK_WRITE_FIRST) {
+			if (block_write_part < 0 || part != (uint32_t)block_write_part || bio != run_storage_bio ||
+			    !thyme_store_write_valid(&run_storage, lba * bio->media->block_size, bytes)) {
 				/* not darwin, or not past what the build writes from the computer: never */
 				if (block_writes_refused++ < 8) {
 					print("ufs: a write of %d blocks from %d of %s: REFUSED\n", count, lba,
@@ -2196,8 +2240,10 @@ block_poll(void)
 				want = ufs_crc32(block_buffer, bytes);
 				s = storage_write_blocks(bio, bio->media->media_id, lba, bytes, block_buffer);
 				if (!EFI_ERROR(s)) {
-					bio->flush_blocks(bio);
-					s = bio->read_blocks(bio, bio->media->media_id, lba, bytes, block_buffer);
+					s = bio->flush_blocks != NULL ? bio->flush_blocks(bio) : 0x8000000000000002ULL;
+					if (!EFI_ERROR(s)) {
+						s = bio->read_blocks(bio, bio->media->media_id, lba, bytes, block_buffer);
+					}
 					flush_dcache((uint64_t)(uintptr_t)block_buffer,
 					    (uint64_t)(uintptr_t)block_buffer + bytes);
 					if (!EFI_ERROR(s) && ufs_crc32(block_buffer, bytes) != want) {
@@ -2802,6 +2848,7 @@ run_kernel(int have_checkpoint, uint64_t checkpoint)
 	uint64_t map_size, map_key, desc_size;
 	uint32_t desc_ver;
 	struct payload_info pi;
+	block_storage_begin_run();
 
 	ios_colour(0xFF00FF00);                /* green: payload read */
 	print("ios: stage payload done\n");
@@ -2946,7 +2993,7 @@ run_kernel(int have_checkpoint, uint64_t checkpoint)
 		hc_requested |= starts_with(c, "ufs_native=") && (c == pi.cmdline || c[-1] == ' ') && c[11] >= '1' &&
 		    c[11] <= '9';
 	}
-	if (!THYME_STORAGE_WRITES) {
+	if (!THYME_STORAGE_WRITES || !thyme_store_info_valid(&run_storage)) {
 		block_write_requested = 0;
 	}
 	if (battery_requested) {
@@ -4127,22 +4174,59 @@ read_partition_bytes(efi_block_io *bio, uint64_t at, uint64_t len, uint8_t *dest
 	return 1;
 }
 
-/* Validate the contiguous v1 layout before using any lengths from storage. */
+static int
+ios_storage_info(const struct ios_storage_header *hdr, uint64_t partition_bytes,
+    struct thyme_store_info *info)
+{
+	if (partition_bytes < IOS_HEADER_BYTES || hdr->payload_len > partition_bytes - IOS_HEADER_BYTES ||
+	    hdr->system_len > partition_bytes - IOS_HEADER_BYTES - hdr->payload_len) {
+		return 0;
+	}
+	memset(info, 0, sizeof(*info));
+	info->version = hdr->version;
+	info->image_bytes = IOS_HEADER_BYTES + hdr->payload_len + hdr->system_len;
+	info->partition_bytes = partition_bytes;
+	if (hdr->version == THYME_LAYOUT_VERSION) {
+		info->layout.store_at = THYME_STORE_AT;
+		info->layout.slot_bytes = THYME_STORE_SLOT_BYTES;
+		info->layout.slots = THYME_STORE_SLOTS;
+		info->layout.block_bytes = THYME_STORAGE_BLOCK_SIZE;
+	} else if (hdr->version == THYME_LAYOUT_V2_VERSION) {
+		memcpy(&info->layout, hdr->reserved, sizeof(info->layout));
+	} else {
+		return 0;
+	}
+	return thyme_store_info_valid(info);
+}
+
+/* Validate the format and all arithmetic before using lengths from storage. */
 static int
 ios_header_valid(const struct ios_storage_header *hdr, uint64_t partition_bytes)
 {
 	uint64_t room;
 
-	if (memcmp(hdr->magic, IOS_STORAGE_MAGIC, 8) != 0 || hdr->version != THYME_LAYOUT_VERSION ||
+	int format_ok = (hdr->version == THYME_LAYOUT_VERSION &&
+	    memcmp(hdr->magic, IOS_STORAGE_MAGIC, 8) == 0) ||
+	    (hdr->version == THYME_LAYOUT_V2_VERSION && memcmp(hdr->magic, "IOSSTOR2", 8) == 0);
+	if (!format_ok ||
 	    hdr->boot_mode > 1 || hdr->flags != 0 || hdr->part2_len != 0 ||
 	    hdr->part3_len != 0 || hdr->part1_len != hdr->system_len ||
 	    hdr->payload_len == 0 || hdr->payload_len > PAYLOAD_MAX_SIZE ||
-	    hdr->system_len == 0 || partition_bytes < IOS_HEADER_BYTES) {
+	    hdr->system_len < 48 || partition_bytes < IOS_HEADER_BYTES) {
 		return 0;
 	}
 	room = partition_bytes - IOS_HEADER_BYTES;
 	if (hdr->payload_len > room || hdr->system_len > room - hdr->payload_len) {
 		return 0;
+	}
+	if (hdr->version == THYME_LAYOUT_V2_VERSION) {
+		struct thyme_store_info info;
+		for (unsigned i = 0; i < sizeof(hdr->padding); i++) {
+			if (hdr->padding[i] != 0) {
+				return 0;
+			}
+		}
+		return ios_storage_info(hdr, partition_bytes, &info);
 	}
 	/* System bytes must never occupy the two alternating persistence slots. */
 	room = BLOCK_WRITE_FIRST * 4096ULL - IOS_HEADER_BYTES;
@@ -4172,6 +4256,9 @@ ios_image_digest_valid(const struct ios_storage_header *hdr, const uint8_t *payl
 	uint8_t digest[SHA256_BLOCK_SIZE];
 
 	sha256_init(&hash);
+	if (hdr->version == THYME_LAYOUT_V2_VERSION) {
+		ios_hash_bytes(&hash, (const uint8_t *)hdr, 96);
+	}
 	ios_hash_bytes(&hash, payload, hdr->payload_len);
 	ios_hash_bytes(&hash, system, hdr->system_len);
 	sha256_final(&hash, digest);
@@ -4190,6 +4277,8 @@ ios_storage_try_boot(void)
 	struct payload_info pi;
 	efi_block_io *ios = find_partition_bio(u"darwin");
 	uint64_t payload_at = IOS_HEADER_BYTES;
+	memset(&pending_storage, 0, sizeof(pending_storage));
+	pending_storage_bio = NULL;
 
 	ios_colour(0xFF000000);                /* black: looking */
 	if (ios == NULL) {
@@ -4207,10 +4296,6 @@ ios_storage_try_boot(void)
 	ios_colour(0xFFFF0000);                /* blue: header read */
 	print("ios: stage header done, magic ok, system %d, payload %d\n", hdr.system_len, hdr.payload_len);
 	flush_log();
-	if (memcmp(hdr.magic, IOS_STORAGE_MAGIC, 8) != 0) {
-		print("ios: no installation (magic %x)\n", (uint64_t)*(const uint64_t *)hdr.magic);
-		return;
-	}
 	print("ios: installation found: version %d, system %d bytes, payload %d\n",
 	    hdr.version, hdr.system_len, hdr.payload_len);
 	if (hdr.boot_mode != 0) {
@@ -4266,6 +4351,11 @@ ios_storage_try_boot(void)
 	print("ios: stage all done, running the kernel from the flash\n");
 	flush_log();
 	print("ios: running the kernel\n");
+	struct thyme_store_info storage;
+	if (ios_storage_info(&hdr, (ios->media->last_block + 1) * ios->media->block_size, &storage)) {
+		pending_storage = storage;
+		pending_storage_bio = ios;
+	}
 	run_kernel(0, 0);
 	/* the run is over (and the data volume saved): reset, so the next boot loads the store back */
 	flush_log();

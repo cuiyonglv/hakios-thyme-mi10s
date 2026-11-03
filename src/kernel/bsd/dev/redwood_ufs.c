@@ -15,7 +15,7 @@
  * Read only wherever a write could do harm, by construction. The block devices never write: the
  * strategy routine refuses, so no filesystem mounted from one can write, and opening one for
  * writing is refused. With ufs_write=1 one character device alone takes writes -- /dev/rufs_darwin,
- * the port's own partition -- and in it only whole blocks from UFS_WRITE_FIRST on, past the iOS
+ * the port's own partition -- and in it only whole blocks in the validated two-slot store, past the iOS
  * volume and both cryptexes that the build writes from the computer (tools/darwin-write.py); that
  * is where the data volume of iOS is kept between runs (userland/src/var_store.c). The partition
  * has to be the one the port was set up with (its name, size, place and logical unit here; its
@@ -63,7 +63,7 @@ extern void FlushPoC_DcacheRegion(vm_offset_t va, size_t length);   /* osfmk/arm
 
 /* the page the loader publishes: the same layout as struct loader_block in xnuloader/loader.c */
 #define BLOCK_MAGIC        0x4b434f4c42574452ULL       /* "RDWBLOCK" */
-#define BLOCK_VERSION      3
+#define BLOCK_VERSION      THYME_BLOCK_PROTOCOL_VERSION
 #define BLOCK_MAX_PARTS    160
 #define BLOCK_MAX_UNITS    16
 #define BLOCK_PART_UNIT    1u                          /* a whole logical unit, not a partition */
@@ -71,12 +71,10 @@ extern void FlushPoC_DcacheRegion(vm_offset_t va, size_t length);   /* osfmk/arm
 #define BLOCK_OP_WRITE     1u
 
 /*
- * Where a write may go, and nowhere else: darwin, the port's own 20 GiB at the end of logical
- * unit 0, and in it only past what the build puts there from the computer -- the iOS volume
- * (blocks 0..1374207) and the two cryptexes behind it (..2042367). The loader keeps the same
- * bounds and the GUIDs of the partition besides (xnuloader/loader.c, BLOCK_WRITE_FIRST).
+ * The legacy partition identity remains mandatory for enabling writes. Within it,
+ * mailbox v4 supplies a verified runtime layout; writes are restricted to its two
+ * slots, with the same checks repeated by the loader. These are not this phone's GPT.
  */
-#define UFS_WRITE_FIRST    THYME_STORE_FIRST_BLOCK
 #define UFS_DARWIN_FIRST   60831744ULL                  /* its first LBA on the unit, as the GPT has it */
 #define UFS_DARWIN_BLOCKS  1048571ULL
 
@@ -98,14 +96,14 @@ struct loader_block {
 	uint64_t buffer_pa;
 	/*
 	 * Which partition the loader will take writes for this run (its index plus one; 0: none) and
-	 * from which of its blocks. They sit in what was padding, so the page is the size and the
-	 * version it was and one phone goes on being shared: a loader built before writes existed
-	 * leaves them zero, which is no write, and a kernel built before them leaves ask.op zero,
-	 * which is a read.
+	 * from which of its blocks. Version4 requires the validated layout and source partition
+	 * association. Older protocol versions are rejected; the request/answer offsets stay fixed.
 	 */
 	uint32_t write_part_plus_one;
 	uint32_t write_reserved;
 	uint64_t write_first;
+	struct thyme_store_info storage;
+	uint32_t storage_part_plus_one;
 	struct {
 		volatile uint32_t request;
 		uint32_t part;
@@ -205,11 +203,15 @@ static int ufs_var_busy_pid;
 
 /* ufs_write=1 and the one partition it is for: everything else answers EROFS as it always did */
 static int ufs_write_part = -1;
+static struct thyme_store_info ufs_store_info;
+static int ufs_store_part = -1;
 static volatile bool ufs_write_busy;            /* a write of ours has this kernel's list out: not a failure */
 static bool ufs_write_out, ufs_write_was_native;        /* the list is out for writing, and was in before */
 static uint64_t ufs_writes, ufs_write_bytes, ufs_write_errors, ufs_write_refused;
 
 SYSCTL_DECL(_kern_redwood);
+SYSCTL_OPAQUE(_kern_redwood, OID_AUTO, var_layout, CTLFLAG_RD | CTLFLAG_LOCKED,
+    &ufs_store_info, sizeof(ufs_store_info), "S,thyme_store_info", "verified per-run persistence layout");
 SYSCTL_QUAD(_kern_redwood, OID_AUTO, ufs_requests, CTLFLAG_RD | CTLFLAG_LOCKED, &ufs_requests,
     "requests the phone's storage has answered through the loader");
 SYSCTL_QUAD(_kern_redwood, OID_AUTO, ufs_errors, CTLFLAG_RD | CTLFLAG_LOCKED, &ufs_errors,
@@ -574,11 +576,15 @@ ufs_write(uint32_t part, uint64_t offset, const uint8_t *src, uint64_t len)
 		ufs_write_refused++;
 		return EROFS;
 	}
-	nbs = ufs_page->part[part].block_size;
+	nbs = ufs_store_info.layout.block_bytes;
+	if (!thyme_store_info_valid(&ufs_store_info) || ufs_page->part[part].block_size != nbs) {
+		return EROFS;
+	}
 	if (len == 0 || offset % nbs != 0 || len % nbs != 0) {
 		return EINVAL;          /* whole blocks only: nothing is read before a write */
 	}
-	if (offset / nbs < UFS_WRITE_FIRST || offset > ufs_part_bytes(part) ||
+	if (part != (uint32_t)ufs_store_part || !thyme_store_write_valid(&ufs_store_info, offset, len) ||
+	    offset > ufs_part_bytes(part) ||
 	    len > ufs_part_bytes(part) - offset) {
 		/* the iOS volume, the cryptexes, and anything past the partition's end: never */
 		ufs_write_refused++;
@@ -1440,12 +1446,38 @@ SYSCTL_QUAD(_kern_redwood, OID_AUTO, ufs_native_fallbacks, CTLFLAG_RD | CTLFLAG_
 
 /* ---- bringing it up ---- */
 
+static void
+ufs_storage_import(int storage_node_ready, unsigned darwin_names)
+{
+	uint32_t storage_part = ufs_page->storage_part_plus_one;
+	memset(&ufs_store_info, 0, sizeof(ufs_store_info));
+	ufs_store_part = -1;
+	if (storage_node_ready && darwin_names == 1 && storage_part > 0 && storage_part <= ufs_parts) {
+		struct thyme_store_info candidate;
+		uint32_t index = storage_part - 1;
+		memcpy(&candidate, (const void *)&ufs_page->storage, sizeof(candidate));
+		if (!(ufs_page->part[index].flags & BLOCK_PART_UNIT) &&
+		    strncmp((const char *)ufs_page->part[index].name, "darwin", 7) == 0 &&
+		    ufs_page->part[index].block_size == THYME_STORAGE_BLOCK_SIZE &&
+		    ufs_page->part[index].blocks <= ~0ULL / THYME_STORAGE_BLOCK_SIZE &&
+		    candidate.partition_bytes == ufs_page->part[index].blocks * THYME_STORAGE_BLOCK_SIZE &&
+		    thyme_store_info_valid(&candidate)) {
+			ufs_store_info = candidate;
+			ufs_store_part = (int)index;
+		}
+	}
+}
+
 void
 redwood_ufs_init(void)
 {
 	uint64_t pa = 0, buffer_pa;
 	uint32_t check = 0, made = 0;
 	vm_offset_t base;
+	unsigned darwin_names = 0;
+	bool storage_node_ready = false;
+	memset(&ufs_store_info, 0, sizeof(ufs_store_info));
+	ufs_store_part = ufs_write_part = -1;
 
 	if (!PE_parse_boot_argn("ufs_shared_pa", &pa, sizeof(pa)) || pa == 0) {
 		return;                 /* the loader was not asked for ufs=2: there is nothing to read through */
@@ -1453,8 +1485,9 @@ redwood_ufs_init(void)
 	base = ml_io_map_unmappable((vm_offset_t)(pa & ~(UFS_PAGE - 1)),
 	    ((pa & (UFS_PAGE - 1)) + sizeof(struct loader_block) + UFS_PAGE - 1) & ~(UFS_PAGE - 1), VM_WIMG_WCOMB);
 	ufs_page = (volatile struct loader_block *)(base + (pa & (UFS_PAGE - 1)));
-	if (ufs_page->magic != BLOCK_MAGIC || ufs_page->version != BLOCK_VERSION ||
-	    ufs_page->size != sizeof(struct loader_block) || ufs_page->parts > BLOCK_MAX_PARTS) {
+	if (ufs_page->magic != BLOCK_MAGIC ||
+	    !thyme_block_protocol_valid(ufs_page->version, ufs_page->size, sizeof(struct loader_block)) ||
+	    ufs_page->parts > BLOCK_MAX_PARTS) {
 		printf("ufs: the loader's page at %llx is not one this kernel knows (magic %llx, version %u, size %u)\n",
 		    pa, ufs_page->magic, ufs_page->version, ufs_page->size);
 		return;
@@ -1480,15 +1513,22 @@ redwood_ufs_init(void)
 		if (ufs_page->part[i].flags & BLOCK_PART_UNIT) {
 			continue;               /* the units are for this kernel's own driver to be checked against */
 		}
+		if (strncmp((const char *)ufs_page->part[i].name, "darwin", 7) == 0) {
+			darwin_names++;
+		}
 		snprintf(name, sizeof(name), "ufs_%s", ufs_page->part[i].name);
 		if (devfs_make_node(makedev(ufs_bmajor, i), DEVFS_BLOCK, UID_ROOT, GID_OPERATOR, 0640, "%s", name) == NULL) {
 			printf("ufs: no node for %s (the same name twice?)\n", name);
 			continue;
 		}
 		snprintf(name, sizeof(name), "rufs_%s", ufs_page->part[i].name);
-		(void)devfs_make_node(makedev(ufs_cmajor, i), DEVFS_CHAR, UID_ROOT, GID_OPERATOR, 0666, "%s", name);
+		if (devfs_make_node(makedev(ufs_cmajor, i), DEVFS_CHAR, UID_ROOT, GID_OPERATOR, 0666, "%s", name) != NULL &&
+		    i + 1 == ufs_page->storage_part_plus_one) {
+			storage_node_ready = true;
+		}
 		made++;
 	}
+	ufs_storage_import(storage_node_ready, darwin_names);
 	ufs_ready = true;
 	printf("ufs: %u partitions of the phone's storage as /dev/ufs_NAME and /dev/rufs_NAME, read only, "
 	    "through the loader's page at %llx and its %u KB buffer\n", made, pa, ufs_buffer_size >> 10);
@@ -1502,9 +1542,12 @@ redwood_ufs_init(void)
 	if (PE_parse_boot_argn("ufs_write", &check, sizeof(check)) && check == 1) {
 		uint32_t offered = ufs_page->write_part_plus_one;
 
-		if (offered == 0 || offered > ufs_parts || ufs_page->write_first != UFS_WRITE_FIRST) {
+		if (offered == 0 || offered > ufs_parts || !thyme_store_info_valid(&ufs_store_info) ||
+		    ufs_store_part != (int)offered - 1 ||
+		    ufs_page->write_first != ufs_store_info.layout.store_at / THYME_STORAGE_BLOCK_SIZE) {
 			printf("ufs: the loader offers no partition to write into (ufs_write=1 on its command "
 			    "line too, and a loader that knows about writes)\n");
+			offered = 0;
 		}
 		for (uint32_t i = 0; offered != 0 && i < ufs_parts; i++) {
 			const char *why = NULL;
@@ -1536,8 +1579,9 @@ redwood_ufs_init(void)
 		}
 		if (ufs_write_part >= 0) {
 			printf("ufs: /dev/rufs_darwin takes writes, whole blocks from %llu on (%llu MB of it); "
-			    "everything else of the storage is read only\n", UFS_WRITE_FIRST,
-			    (UFS_DARWIN_BLOCKS - UFS_WRITE_FIRST) * 4096 >> 20);
+			    "everything else of the storage is read only\n",
+			    ufs_store_info.layout.store_at / THYME_STORAGE_BLOCK_SIZE,
+			    ufs_store_info.layout.slot_bytes * ufs_store_info.layout.slots >> 20);
 		} else {
 			printf("ufs: nothing takes writes: darwin is not among the partitions\n");
 		}

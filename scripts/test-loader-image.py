@@ -2,6 +2,8 @@
 """Host/ASan tests for the production installation header and partition reader."""
 from pathlib import Path
 import os
+import importlib.util
+import struct
 import subprocess
 import tempfile
 
@@ -46,7 +48,7 @@ static efi_status read_blocks(efi_block_io *bio, uint32_t id, uint64_t lba,
 }
 '''
 suffix = r'''
-int main(void) {
+int main(int argc, char **argv) {
     media.block_size = 4096; media.last_block = 15;
     efi_block_io io = {&media, read_blocks};
     struct { struct ios_storage_header header; uint8_t canary[4096]; } dest;
@@ -97,7 +99,7 @@ int main(void) {
     h.system_len = h.part1_len = UINT64_MAX;
     assert(!ios_header_valid(&h, UINT64_MAX));
     memcpy(h.magic, "IOSSTOR2", 8); h.version = 2;
-    assert(!ios_header_valid(&h, UINT64_MAX)); /* runtime integration is not enabled yet */
+    assert(!ios_header_valid(&h, UINT64_MAX)); /* overflow/invalid descriptor still rejected */
     memcpy(h.magic, IOS_STORAGE_MAGIC, 8); h.version = 1;
     uint8_t payload[64] = {1}, system[128] = {2};
     SHA256_CTX hash;
@@ -115,6 +117,29 @@ int main(void) {
     assert(!ios_image_digest_valid(&h, payload, system));
     puts("PASS: 4096-byte header canary, partition bounds, invalid media, overflow, layout limits");
     puts("PASS: payload, system and digest corruption are rejected");
+    memset(&h,0,sizeof(h));memcpy(h.magic,"IOSSTOR2",8);h.version=2;
+    h.payload_len=sizeof(payload);h.system_len=h.part1_len=sizeof(system);
+    struct thyme_store_layout layout={12288,65536,2,4096,0};
+    memcpy(h.reserved,&layout,sizeof(layout));
+    assert(ios_header_valid(&h,4u<<20));
+    assert(!ios_header_valid(&h,layout.store_at+2*layout.slot_bytes-1));
+    sha256_init(&hash);sha256_update(&hash,(const uint8_t *)&h,96);
+    sha256_update(&hash,payload,sizeof(payload));sha256_update(&hash,system,sizeof(system));
+    sha256_final(&hash,h.sha256);assert(ios_image_digest_valid(&h,payload,system));
+    h.reserved[0]^=1;assert(!ios_image_digest_valid(&h,payload,system));h.reserved[0]^=1;
+    h.boot_mode=1;assert(!ios_image_digest_valid(&h,payload,system));h.boot_mode=0;
+    h.padding[0]=1;assert(!ios_header_valid(&h,4u<<20));h.padding[0]=0;
+    struct thyme_store_info info;assert(ios_storage_info(&h,4u<<20,&info));
+    assert(info.version==2&&info.layout.store_at==12288);
+    puts("PASS: v2 descriptor/capacity, header-bound digest and nonzero padding rejection");
+    assert(argc==2);FILE *file=fopen(argv[1],"rb");assert(file);
+    uint8_t *packed=malloc(65536);assert(packed);size_t length=fread(packed,1,65536,file);fclose(file);
+    assert(length>=4096);struct ios_storage_header *from_python=(void *)packed;
+    assert(ios_header_valid(from_python,1u<<20));
+    assert(4096+from_python->payload_len+from_python->system_len==length);
+    assert(ios_image_digest_valid(from_python,packed+4096,packed+4096+from_python->payload_len));
+    packed[64]^=1;assert(!ios_image_digest_valid(from_python,packed+4096,packed+4096+from_python->payload_len));
+    free(packed);puts("PASS: Python-packed v2 image decoded and hashed by production C loader");
 }
 '''
 with tempfile.TemporaryDirectory(prefix='thyme-image-reader-') as temporary:
@@ -127,4 +152,15 @@ with tempfile.TemporaryDirectory(prefix='thyme-image-reader-') as temporary:
                     '-I', str(root / 'src/loader'), str(cfile),
                     '-I', str(root / 'src/kernel/bsd/sys'),
                     str(root / 'src/loader/sha256.c'), '-o', str(binary)], check=True)
-    subprocess.run([str(binary)], check=True, timeout=20)
+    spec = importlib.util.spec_from_file_location('pack_fixture', root / 'scripts/build-image.py')
+    builder = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(builder)
+    kernel_path, apfs, image = directory / 'kernel', directory / 'test.apfs', directory / 'image'
+    kernel_path.write_bytes(struct.pack('<8I', 0xfeedfacf, 0x100000c, 0, 2, 0, 0, 0, 0))
+    container = bytearray(4096)
+    container[32:36] = b'NXSB'
+    struct.pack_into('<IQ', container, 36, 4096, 1)
+    apfs.write_bytes(container)
+    builder.build_image(kernel_path, apfs, apfs, image, layout_version=2,
+                        partition_bytes=1 << 20, slot_bytes=65536)
+    subprocess.run([str(binary), str(image)], check=True, timeout=20)

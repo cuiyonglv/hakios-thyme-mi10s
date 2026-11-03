@@ -2,8 +2,8 @@
 """Build a local image; v1 is default, v2 is an experimental on-disk format.
 
 KERNEL, SMALL, SYSTEM, OUT and CMDLINE retain the original environment API.
-Neither format is an installation plan. V2 requires explicit partition capacity
-and is currently rejected by the loader pending runtime integration.
+Neither format is an installation plan. V2 requires explicit partition capacity,
+matching mailbox-v4 runtime components and device acceptance before installation.
 """
 import hashlib
 import os
@@ -124,7 +124,7 @@ def build_image(kernel_path, small_path, system_path, output_path, cmdline=DEFAU
     if layout is not None:
         result['storage_layout'] = layout
         result['digest_scope'] = 'header[0:96] + payload + system'
-        result['integration_status'] = 'experimental format; runtime integration and migration not complete'
+        result['integration_status'] = 'experimental runtime; device acceptance and migration not complete'
     return result
 
 
