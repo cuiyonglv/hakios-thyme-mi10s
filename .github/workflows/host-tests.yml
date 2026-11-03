@@ -28,5 +28,7 @@ jobs:
         run: python3 scripts/test-var-store-selection.py
       - name: Persistence unpacking on temporary files
         run: python3 scripts/test-var-store-unpack.py
+      - name: Persistence archive roundtrip and interrupted saves
+        run: python3 scripts/test-var-store-roundtrip.py
       - name: Kernel export audit semantics
         run: python3 scripts/test-kernel-export-audit.py

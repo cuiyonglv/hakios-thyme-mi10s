@@ -771,6 +771,11 @@ gather_names(int dir_fd, char *buf, size_t bufsize, uint64_t mark_a, uint64_t ma
 			arena_used += len + 1;
 		}
 	}
+	if (n < 0) {
+		arena_used = mark_a;
+		names_used = mark_n;
+		return -1;
+	}
 	sort_names(name_at + mark_n, names_used - mark_n);
 	return (long)(names_used - mark_n);
 }
@@ -807,8 +812,9 @@ pack_tree(const char *relative)
 		long count = gather_names(dir_fd, dirbuf[depth - 1], sizeof(dirbuf[0]), mark_a, mark_n);
 
 		if (count < 0) {
-			/* more names than the arena holds: this one goes in whatever order it is given */
-			unsorted_dirs++;
+			/* There is no fallback enumeration: never commit a silently incomplete tree. */
+			printf("var_store: %s: directory enumeration failed or exceeded its limits\n", path);
+			ok = 0;
 		}
 		for (long k = 0; ok && k < count; k++) {
 			const char *name = name_arena + name_at[mark_n + k];
@@ -933,8 +939,10 @@ whole_path(const char *relative, uint32_t len)
 	if (len == 0 || len >= MAX_PATH - sizeof(ROOT) - 1 || relative[0] == '/') {
 		return 0;
 	}
-	if (memchr(relative, 0, len) != NULL) {
-		return 0;       /* counted archive names must not hide a second suffix */
+	for (uint32_t i = 0; i < len; i++) {
+		if (relative[i] == 0) {
+			return 0;       /* counted names must not hide a second suffix */
+		}
 	}
 	for (uint32_t i = 0; i + 1 < len; i++) {
 		if (relative[i] == '.' && relative[i + 1] == '.' &&
