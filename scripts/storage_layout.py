@@ -26,3 +26,25 @@ def read_legacy_layout(path=HEADER):
 
 
 LEGACY_LAYOUT = read_legacy_layout()
+
+
+def valid_v2_layout(layout, image_bytes, partition_bytes):
+    fields = ('store_at', 'slot_bytes', 'slots', 'block_bytes', 'flags')
+    if any(type(layout.get(name)) is not int or not 0 <= layout[name] < 1 << 64 for name in fields):
+        return False
+    if (type(image_bytes) is not int or type(partition_bytes) is not int or
+            not 4096 <= image_bytes <= layout['store_at'] <= partition_bytes < 1 << 63 or
+            layout['flags'] != 0 or layout['slots'] != 2 or layout['block_bytes'] != 4096 or
+            layout['store_at'] % 4096 or layout['slot_bytes'] < 8192 or layout['slot_bytes'] % 4096):
+        return False
+    return layout['slot_bytes'] <= (partition_bytes - layout['store_at']) // layout['slots']
+
+
+def plan_v2_layout(image_bytes, partition_bytes, slot_bytes=LEGACY_LAYOUT['slot_bytes']):
+    if type(image_bytes) is not int or image_bytes < 4096:
+        raise ValueError('invalid v2 image length')
+    layout = {'store_at': (image_bytes + 4095) // 4096 * 4096,
+              'slot_bytes': slot_bytes, 'slots': 2, 'block_bytes': 4096, 'flags': 0}
+    if not valid_v2_layout(layout, image_bytes, partition_bytes):
+        raise ValueError('v2 image and persistence slots do not fit the explicit partition capacity')
+    return layout

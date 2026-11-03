@@ -96,6 +96,9 @@ int main(void) {
     assert(!ios_header_valid(&h, UINT64_MAX));
     h.system_len = h.part1_len = UINT64_MAX;
     assert(!ios_header_valid(&h, UINT64_MAX));
+    memcpy(h.magic, "IOSSTOR2", 8); h.version = 2;
+    assert(!ios_header_valid(&h, UINT64_MAX)); /* runtime integration is not enabled yet */
+    memcpy(h.magic, IOS_STORAGE_MAGIC, 8); h.version = 1;
     uint8_t payload[64] = {1}, system[128] = {2};
     SHA256_CTX hash;
     h.payload_len = sizeof(payload); h.system_len = sizeof(system);

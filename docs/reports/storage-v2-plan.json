@@ -1,0 +1,19 @@
+{
+  "status": "planning only; not an installed or runtime-compatible image",
+  "capacity_basis": "hypothetical 4GiB, not this phone measured GPT",
+  "kernel_bytes": 15251416,
+  "root_apfs_bytes": 4194304,
+  "system_apfs_bytes": 2492203008,
+  "command_bytes": 235,
+  "payload_bytes": 19446048,
+  "image_bytes": 2511653152,
+  "legacy_overlap_bytes": 8177952,
+  "candidate_partition_bytes": 4294967296,
+  "layout": {
+    "store_at": 2511654912,
+    "slot_bytes": 536870912,
+    "slots": 2,
+    "block_bytes": 4096,
+    "flags": 0
+  }
+}

@@ -82,6 +82,36 @@ class BuildImageTests(unittest.TestCase):
             with self.subTest(command=repr(command[:12])), self.assertRaises(ValueError):
                 self.build(command)
 
+    def test_v2_descriptor_and_bound_digest(self):
+        result = builder.build_image(self.kernel, self.small, self.system, self.output,
+                                     layout_version=2, partition_bytes=4 << 20, slot_bytes=65536)
+        data = self.output.read_bytes()
+        self.assertEqual(data[:8], b'IOSSTOR2')
+        self.assertEqual(struct.unpack_from('<II', data, 8), (2, 0))
+        store, slot, count, block, flags = struct.unpack_from('<QQIIQ', data, 64)
+        self.assertEqual((slot, count, block, flags), (65536, 2, 4096, 0))
+        self.assertEqual(store, (len(data) + 4095) // 4096 * 4096)
+        self.assertEqual(result['storage_layout']['store_at'], store)
+        expected = hashlib.sha256(data[:96] + data[4096:]).digest()
+        self.assertEqual(data[96:128], expected)
+        changed = bytearray(data)
+        changed[64] ^= 1
+        self.assertNotEqual(hashlib.sha256(changed[:96] + changed[4096:]).digest(), expected)
+        with patch.object(builder, 'STORE_AT', 1):
+            builder.build_image(self.kernel, self.small, self.system, self.output,
+                                layout_version=2, partition_bytes=4 << 20, slot_bytes=65536)
+
+    def test_v2_invalid_capacity_preserves_output(self):
+        self.output.write_bytes(b'previous')
+        for options in ({'partition_bytes': None}, {'partition_bytes': 8192},
+                        {'partition_bytes': 4 << 20, 'slot_bytes': 1},
+                        {'partition_bytes': 1 << 63}, {'layout_version': 3}):
+            arguments = {'layout_version': 2, **options}
+            with self.subTest(options=options), self.assertRaises(ValueError):
+                builder.build_image(self.kernel, self.small, self.system, self.output, **arguments)
+            self.assertEqual(self.output.read_bytes(), b'previous')
+        self.assertFalse(list(self.directory.glob('*.tmp')))
+
     def test_output_cannot_replace_input(self):
         self.output = self.kernel
         previous = self.kernel.read_bytes()

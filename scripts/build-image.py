@@ -1,15 +1,16 @@
 #!/usr/bin/env python3
-"""Build a local contiguous v1 image; reject overlap with persistence slots.
+"""Build a local image; v1 is default, v2 is an experimental on-disk format.
 
 KERNEL, SMALL, SYSTEM, OUT and CMDLINE retain the original environment API.
-The fixed layout is the author's layout, not an installation plan for a phone.
+Neither format is an installation plan. V2 requires explicit partition capacity
+and is currently rejected by the loader pending runtime integration.
 """
 import hashlib
 import os
 from pathlib import Path
 import struct
 import tempfile
-from storage_layout import LEGACY_LAYOUT
+from storage_layout import LEGACY_LAYOUT, plan_v2_layout
 
 HEADER = 4096
 MAGIC = b'IOSSTOR1'
@@ -43,7 +44,8 @@ def check_apfs(path):
     return size
 
 
-def build_image(kernel_path, small_path, system_path, output_path, cmdline=DEFAULT_CMDLINE):
+def build_image(kernel_path, small_path, system_path, output_path, cmdline=DEFAULT_CMDLINE,
+                *, layout_version=1, partition_bytes=None, slot_bytes=LEGACY_LAYOUT['slot_bytes']):
     kernel_path, small_path, system_path, output_path = map(
         Path, (kernel_path, small_path, system_path, output_path))
     if output_path.resolve() in {p.resolve() for p in (kernel_path, small_path, system_path)}:
@@ -68,13 +70,21 @@ def build_image(kernel_path, small_path, system_path, output_path, cmdline=DEFAU
     if len(payload) > PAYLOAD_MAX:
         raise ValueError('XNUP payload exceeds the reserved RAM window')
     image_size = HEADER + len(payload) + system_size
-    if image_size > STORE_AT:
+    if type(layout_version) is not int or layout_version not in (1, 2):
+        raise ValueError('unsupported layout version')
+    if layout_version == 1 and image_size > STORE_AT:
         raise ValueError(f'image overlaps persistence slots by {image_size - STORE_AT} bytes; '
                          'rebuild smaller images or explicitly redesign the shared layout')
     header = bytearray(HEADER)
-    header[:8] = MAGIC
-    struct.pack_into('<IIQQQQQQ', header, 8, 1, 0, len(payload), system_size,
+    layout = None
+    if layout_version == 2:
+        layout = plan_v2_layout(image_size, partition_bytes, slot_bytes)
+    header[:8] = MAGIC if layout_version == 1 else b'IOSSTOR2'
+    struct.pack_into('<IIQQQQQQ', header, 8, layout_version, 0, len(payload), system_size,
                      system_size, 0, 0, 0)
+    if layout is not None:
+        struct.pack_into('<QQIIQ', header, 64, layout['store_at'], layout['slot_bytes'],
+                         layout['slots'], layout['block_bytes'], layout['flags'])
     output_path.parent.mkdir(parents=True, exist_ok=True)
     temporary = None
     try:
@@ -83,7 +93,10 @@ def build_image(kernel_path, small_path, system_path, output_path, cmdline=DEFAU
             temporary = Path(stream.name)
             stream.write(header)
             stream.write(payload)
-            digest = hashlib.sha256(payload)
+            digest = hashlib.sha256()
+            if layout_version == 2:
+                digest.update(header[:96])
+            digest.update(payload)
             copied = 0
             with system_path.open('rb') as system:
                 while chunk := system.read(CHUNK):
@@ -104,8 +117,15 @@ def build_image(kernel_path, small_path, system_path, output_path, cmdline=DEFAU
     finally:
         if temporary is not None:
             temporary.unlink(missing_ok=True)
-    return {'payload_bytes': len(payload), 'system_bytes': system_size,
-            'image_bytes': image_size, 'sha256_payload_system': digest.hexdigest()}
+    result = {'payload_bytes': len(payload), 'system_bytes': system_size,
+              'image_bytes': image_size, 'layout_version': layout_version,
+              ('sha256_payload_system' if layout_version == 1 else
+               'sha256_header_payload_system'): digest.hexdigest()}
+    if layout is not None:
+        result['storage_layout'] = layout
+        result['digest_scope'] = 'header[0:96] + payload + system'
+        result['integration_status'] = 'experimental format; runtime integration and migration not complete'
+    return result
 
 
 def main():
@@ -114,7 +134,10 @@ def main():
                          os.environ.get('SMALL', base / 'root.apfs'),
                          os.environ.get('SYSTEM', base / 'system.apfs'),
                          os.environ.get('OUT', base / 'ios-storage/ios.img'),
-                         os.environ.get('CMDLINE', DEFAULT_CMDLINE))
+                         os.environ.get('CMDLINE', DEFAULT_CMDLINE),
+                         layout_version=int(os.environ.get('LAYOUT_VERSION', '1')),
+                         partition_bytes=(int(os.environ['PARTITION_BYTES'], 0)
+                                          if 'PARTITION_BYTES' in os.environ else None))
     for key, value in result.items():
         print(f'{key}: {value}')
 
