@@ -1,8 +1,8 @@
 # Thyme UEFI preparation
 
-Status: native UEFI build and firmware readback checks passed. No new UEFI phone boot has
-been accepted. Kernel, root image and loader builds do not establish that the
-firmware handoff, memory map or recovery timer works on this phone.
+Status: native build, firmware readback and a RAM-only resident-loader phone
+baseline passed. XNU, device functions, persistence and watchdog recovery remain
+unverified on the phone.
 
 The stock Android RAM boot and subsequent return to original Android slot B
 passed without selecting another slot or flashing a partition. A separate
@@ -86,3 +86,25 @@ The platform patch also selects SM8250-AC and the Mi 10S model identity. It appl
 cleanly to the pinned reference package and reproduces the three changed native
 source files exactly. The bounded handoff and memory map are separate source
 overlays under `src/uefi/Library/`. No prebuilt firmware is published here.
+
+## Phone resident-loader baseline
+
+The verified FD and read-only loader revision
+`c0c0838d79c05e1a10f9e4a9ea4615bef1b61f54` were packaged with the live thyme FDT.
+The XNUP container contained only `loader.efi` and `usb`; no XNU kernel or iOS
+system was included. Independent AOSP unpacking and gzip/FDT readback matched
+the complete packaged inputs before the temporary `fastboot boot`.
+
+The phone enumerated the resident USB interface and answered `product:
+xnuloader`, `version: 0.5`. The retrieved loader log confirms EL1, the 19.2 MHz
+counter, a 1080x2340 display at `0x9c000000`, and USB initialization. Screen
+geometry reported a 4320-byte row. A resident `reboot` returned to the original
+Android build on slot B, with completed boot and a changed kernel boot ID.
+No partition was flashed, no GPT was changed and no slot was selected.
+
+The log also exposed a remaining issue: the loader selects its `unknown-kona`
+fallback and its existing watchdog code checks for the exact Redwood platform
+pointer. Consequently this baseline did not arm that watchdog. Correct and
+validate watchdog capability detection before using a hang test or relying on
+automatic recovery from a kernel failure. The observed cold-reset command is
+evidence for the normal return path, not for watchdog recovery.
