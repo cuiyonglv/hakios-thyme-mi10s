@@ -1,0 +1,120 @@
+{
+  "schema": 1,
+  "image_bytes": 2492203008,
+  "image_sha256": "162a238efa35279883acc878b121b5c01faf5f48e2152febd51eb2c83db3686d",
+  "census_entries": 62355,
+  "regular_files_scanned_in_extensions": 96,
+  "macho_files_in_extensions": [
+    {
+      "path": "/System/Library/Extensions/AppleUserConsent.kext/AppleUserConsent_development",
+      "bytes": 86768,
+      "sha256": "3410082c8682f26504db7ce7f5ea5238a8e0fd3e531d07f5994ca47173e7d319",
+      "macho_filetypes": [
+        11
+      ],
+      "symbol_status": 0,
+      "unavailable_imports": []
+    },
+    {
+      "path": "/System/Library/Extensions/AppleUserConsent.kext/AppleUserConsent",
+      "bytes": 86752,
+      "sha256": "7ebf08e216ed4894e2461336a712139da046d870d9c92875ac49bf87df3b6382",
+      "macho_filetypes": [
+        11
+      ],
+      "symbol_status": 0,
+      "unavailable_imports": []
+    },
+    {
+      "path": "/System/Library/Extensions/AppleHPM.kext/PlugIns/AppleHPMLib.plugin/AppleHPMLib",
+      "bytes": 72192,
+      "sha256": "16bca6edc48894813f5c4d929e41ba143601109e13f131a88b5842b57ec151a7",
+      "macho_filetypes": [
+        8
+      ],
+      "symbol_status": 0,
+      "unavailable_imports": []
+    },
+    {
+      "path": "/System/Library/Extensions/IOUSBHostFamily.kext/PlugIns/IOUSBLib.bundle/IOUSBLib",
+      "bytes": 139552,
+      "sha256": "93783a1e63794d02292a44d6e21c7230d10d4ff5de8a4728fd055aeb90b7525a",
+      "macho_filetypes": [
+        8
+      ],
+      "symbol_status": 0,
+      "unavailable_imports": []
+    },
+    {
+      "path": "/System/Library/Extensions/AppleGameControllerPersonality.kext/AppleGameControllerPersonality",
+      "bytes": 102912,
+      "sha256": "1810f3538243d3514815b80b468b80ff1f5385e3c8a8d030a3dba5d86d93ddd0",
+      "macho_filetypes": [
+        11
+      ],
+      "symbol_status": 0,
+      "unavailable_imports": []
+    },
+    {
+      "path": "/System/Library/Extensions/lifs.kext/lifs",
+      "bytes": 280592,
+      "sha256": "b10b516ca72dae6233bc9ddeb2633ed83c25afce5e7253cabfe360700964f671",
+      "macho_filetypes": [
+        11
+      ],
+      "symbol_status": 0,
+      "unavailable_imports": []
+    },
+    {
+      "path": "/System/Library/Extensions/ASIOKit.kext/ASIOKit",
+      "bytes": 362400,
+      "sha256": "3e5e38f7f19af4c6bfef9928d24a4c8049be44bb2cf7b8731a833739759b2d03",
+      "macho_filetypes": [
+        11
+      ],
+      "symbol_status": 0,
+      "unavailable_imports": []
+    },
+    {
+      "path": "/System/Library/Extensions/AppleSPU.kext/PlugIns/FastpathLib.plugin/FastpathLib",
+      "bytes": 71728,
+      "sha256": "02396d6d6708cd355460d116e2f07236e0d7f84e6e0f6ff6841a5feac4a93c1a",
+      "macho_filetypes": [
+        8
+      ],
+      "symbol_status": 0,
+      "unavailable_imports": []
+    },
+    {
+      "path": "/System/Library/Extensions/EAP-RSA.ppp/EAP-RSA",
+      "bytes": 55360,
+      "sha256": "9e7d91d38c3e955bf97027d683818d61c60a59beede5655c2bda94f763951b3a",
+      "macho_filetypes": [
+        8
+      ],
+      "symbol_status": 0,
+      "unavailable_imports": []
+    },
+    {
+      "path": "/System/Library/Extensions/AppleBiometricSensor.kext/PlugIns/AppleMesaLib.plugin/AppleMesaLib",
+      "bytes": 84256,
+      "sha256": "04c2e0e0634413d8474f5863b86fd6ac053d870e160747f9c614bcd90bc8f25a",
+      "macho_filetypes": [
+        8
+      ],
+      "symbol_status": 0,
+      "unavailable_imports": []
+    },
+    {
+      "path": "/System/Library/Extensions/IOStreamFamily.kext/PlugIns/IOStreamLib.plugin/IOStreamLib",
+      "bytes": 80304,
+      "sha256": "0b15ffba29485baa9d5d53d7214aa8c09401c0ae325adb92230829355f56c77c",
+      "macho_filetypes": [
+        8
+      ],
+      "symbol_status": 0,
+      "unavailable_imports": []
+    }
+  ],
+  "limitation": "Static symbol scan only; no extension load/runtime certification."
+}

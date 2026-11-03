@@ -1,0 +1,52 @@
+{
+  "schema": 1,
+  "target": "thyme",
+  "xnu_commit": "c54f35ca767986246321eb901baf8f5ff7923f6a",
+  "original_sha256": "00e242d4bb226e76c5d759be06606722bcd006dba267cfc5b5e42a0b44ea9dc9",
+  "unavailable_interfaces": {
+    "apple_pmap_iommu": [
+      "_pmap_iommu_init",
+      "_pmap_iommu_iovmalloc",
+      "_pmap_iommu_map",
+      "_pmap_iommu_unmap",
+      "_pmap_iommu_iovmfree",
+      "_pmap_iommu_ioctl",
+      "_pmap_iommu_alloc_contiguous_pages"
+    ],
+    "apple_nvme_ppl": [
+      "_nvme_ppl_get_desc"
+    ],
+    "apple_sart_dart": [
+      "_sart_get_desc",
+      "_t8020dart_get_desc",
+      "_t8020dart_vo_tte",
+      "_t6000dart_get_desc",
+      "_t6000dart_vo_tte",
+      "_t8110dart_get_desc",
+      "_t8110dart_max_translation_levels",
+      "_t8110dart_vo_tte",
+      "_t8110dart_vo_tt_index"
+    ],
+    "apple_uat": [
+      "_uat_get_desc",
+      "__ZN26IOUnifiedAddressTranslator10gMetaClassE",
+      "__ZN26IOUnifiedAddressTranslator10superClassE",
+      "__ZN26IOUnifiedAddressTranslator17getPageTableEntryEy",
+      "__ZN26IOUnifiedAddressTranslator18setClientContextIDEjb",
+      "__ZN26IOUnifiedAddressTranslator21removeClientContextIDEv",
+      "__ZN26IOUnifiedAddressTranslator19isPageFaultExpectedEyj",
+      "__ZN26IOUnifiedAddressTranslator22registerTaskForServiceEP4taskP9IOService",
+      "__ZN26IOUnifiedAddressTranslator23createMappingInApertureEjP18IOMemoryDescriptorjym",
+      "__ZN26IOUnifiedAddressTranslator23getTotalPageTableMemoryEv",
+      "__ZN26IOUnifiedAddressTranslator3mapEP11IOMemoryMapj",
+      "__ZN26IOUnifiedAddressTranslator5doMapEP18IOMemoryDescriptoryyj",
+      "__ZN26IOUnifiedAddressTranslator5unmapEP11IOMemoryMap",
+      "__ZN26IOUnifiedAddressTranslator7doUnmapEP18IOMemoryDescriptoryy",
+      "__ZN26IOUnifiedAddressTranslator8taskDiedEv",
+      "__ZN26IOUnifiedAddressTranslator12commitUnmapsEv",
+      "__ZN26IOUnifiedAddressTranslator14prepareFWUnmapEyy",
+      "__ZTV26IOUnifiedAddressTranslator"
+    ]
+  },
+  "selected_sha256": "1007313296997af26a8f31e3cf27517d5cfada2c0b5228c187b0f1bdfc822864"
+}

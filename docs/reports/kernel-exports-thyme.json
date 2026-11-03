@@ -1,0 +1,67 @@
+{
+  "defined_symbols": 22784,
+  "checked_declarations": 5603,
+  "symbol_file_sha256": "29f79103b1d1240f1e47bf0cc163adc17ec87943e298937b938170b7f137d3e1",
+  "export_files": [
+    {
+      "name": "BSDKernel.exports",
+      "sha256": "a397b85cc3507ef3b1afcbf67071a2da7bb0355bed82f5465e821a50d9ff861a"
+    },
+    {
+      "name": "BSDKernel.arm64.exports",
+      "sha256": "e76623fb6cb0f77e37738d1ad5a94f16c6f614559a415f073bf49774bd800f99"
+    },
+    {
+      "name": "IOKit.exports",
+      "sha256": "96eafa9242ef1dffde13b5ebdf43240fa5e6380aed39aa2f341a55287032d235"
+    },
+    {
+      "name": "IOKit.arm64.exports",
+      "sha256": "20be4da4f6637ca6d2b5a8fec95d00874858a8e1d8c7afbb1e860aae6ae130e9"
+    },
+    {
+      "name": "Libkern.exports",
+      "sha256": "bfaae5726654281e1733228b163a116ece76e3e5a305a66469306236cff6d205"
+    },
+    {
+      "name": "Libkern.arm64.exports",
+      "sha256": "166c204e9399e8832ff80c4b804145140de56cf764d8f6485274176b9491f75e"
+    },
+    {
+      "name": "Mach.exports",
+      "sha256": "96b5c5dc21e684538180edb88a347033b368fb2b99544227e8142f974cbecc42"
+    },
+    {
+      "name": "Mach.arm64.exports",
+      "sha256": "59d3554678319f0f4a640cce3159c3c0004e0a1dc193d70df88eb531190de6c5"
+    },
+    {
+      "name": "MACFramework.exports",
+      "sha256": "d4fc898af0c925a48f8e82073461ea400490561dcc52c16339e62f7caef467e1"
+    },
+    {
+      "name": "MACFramework.arm64.exports",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "Unsupported.exports",
+      "sha256": "0418c47c8b920832810933ca47bcb8bcfd2523b230081ac0a6e7bc9ced451972"
+    },
+    {
+      "name": "Unsupported.arm64.exports",
+      "sha256": "a454441f451cd8d60a9955cc55c6fe9b05ed3216ddae37fb21814b79684da0f0"
+    },
+    {
+      "name": "Private.exports",
+      "sha256": "3e9935c5360a60c496d2b4de542d77e2f66374b4050b47c2aeabd27b43f8fb8e"
+    },
+    {
+      "name": "Private.arm64.exports",
+      "sha256": "1007313296997af26a8f31e3cf27517d5cfada2c0b5228c187b0f1bdfc822864"
+    }
+  ],
+  "missing_declarations": 0,
+  "with_existing_impl_candidate": 0,
+  "missing_by_file": {},
+  "missing": []
+}

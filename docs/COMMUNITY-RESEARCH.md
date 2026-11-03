@@ -85,8 +85,10 @@ all 17 original definitions from pinned XNU 8796.121.2. The successful
 used Xcode 15.0.1 (IIG DriverKit-286). Its [source cache](../tools/apple-iig-8796/README.md)
 includes paired headers/implementations, licenses and provenance hashes.
 All 17 pairs compile and an isolated kernel relink has no undefined imports.
-The original export audit still reports 35 Apple-specific IOMMU/DART/UAT symbols;
-neither that platform selection nor phone behavior is validated by this result.
+The original export audit still reports 35 Apple-specific IOMMU/DART/UAT symbols.
+An explicit [thyme platform contract](../tools/thyme-exports/README.md) now selects
+the supported target ABI with all original checks enabled; complete make passes.
+This is not a phone behavior result.
 
 - Instrument restore phases (slot header, checksum pass, unpack and last entry)
   and collect phone logs before choosing a timeout/recovery policy. A timeout

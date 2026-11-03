@@ -17,8 +17,9 @@ Do not combine those stand-ins with these real implementations.
 All 17 source files compile against both the existing kernel SDK declarations
 and their paired generated headers. An isolated real relink succeeds without
 undefined imports; the original export audit still reports 35 missing
-Apple-specific IOMMU/DART/UAT symbols. That remaining platform selection and a
-complete build must be resolved independently. This is not phone boot evidence.
+Apple-specific IOMMU/DART/UAT symbols. The explicit
+[thyme platform contract](../thyme-exports/README.md) resolves their target
+selection separately; full target make now passes. This is not phone boot evidence.
 
 The experimental PureDarwin generator was not selected: retaining Apple message
 IDs did not repair differences in wire argument ordering or serialized-container

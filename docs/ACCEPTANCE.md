@@ -20,7 +20,7 @@
 | 产物记录校验 | 源码/identity/产物哈希、提交、脏状态、写入开关与EFI头检查 | 不是发布者认证或真机启动验收 |
 | EFI与保存程序交叉编译 | 曾通过；每次修改后需重新编译 | 未进行真机启动 |
 | 匹配用户态root APFS | 已补入模板缺失的保存程序及guarded init；apfsck通过，459条目及两个程序SHA-256回读一致 | 仅4MiB根镜像组件；完整内核、系统素材及手机验收尚未完成 |
-| 完整内核构建 | 已生成链接内核；完整make尚有导出符号集问题 | 不得标为全部构建检查通过 |
+| 完整内核构建 | 原生Apple IIG替换占位实现；明确thyme导出契约后完整make退出0，5,603项声明无缺失 | Apple原契约的35项专用接口仍不可用；未验证手机启动、DMA或可加载扩展，详见KERNEL-BUILD.md |
 
 `scripts/build-image.py`默认设置`ufs_write=0 var_store=0`、120秒会话。
 loader构建还默认设置`ALLOW_STORAGE_WRITES=0`，生成`loader.build.json`记录配置与哈希。
