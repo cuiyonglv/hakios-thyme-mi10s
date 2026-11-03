@@ -12354,6 +12354,25 @@ pmap_in_ppl(void)
 	return false;
 }
 
+#if !XNU_MONITOR
+/* Capability queries for this non-PPL platform. The protected-write operation
+ * below still panics; reporting false prevents callers from selecting it.
+ * Match the unsupported-platform semantics in upstream x86_64/pmap.c. */
+bool
+pmap_has_iofilter_protected_write(void)
+{
+	return false;
+}
+
+int
+pmap_cs_configuration(void)
+{
+	/* No pmap_cs configuration subset is reported. As documented in pmap.h,
+	 * zero is NOT evidence that code-signing policy is secure or at defaults. */
+	return 0;
+}
+#endif /* !XNU_MONITOR */
+
 __attribute__((__noreturn__))
 void
 pmap_iofilter_protected_write(__unused vm_address_t addr, __unused uint64_t value, __unused uint64_t width)

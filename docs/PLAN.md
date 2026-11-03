@@ -66,9 +66,20 @@ EFI文件头。通过只表示这些输入一致，不验证发布者身份或�
 | 实际存储恢复路径 | 生产归档保存/恢复已在主机稀疏文件验证 | 补齐Darwin元数据与设备握手；明确恢复失败策略，避免半恢复后继续启动 |
 
 当前内核审计使用实际构建的`nm -gj`符号表与七组通用/arm64导出声明：
-22,578个已定义符号、5,638项声明，缺失131项：IOKit 89、Libkern 2、Private 5、
+22,580个已定义符号、5,638项声明，缺失129项：IOKit 89、Libkern 2、Private 3、
 Private.arm64 35。其中91项的解码名称涉及IORPC/Invoke/Dispatch；这是分类线索，
 不是“全部都是同一个问题”的结论。
+初次审计为131项；本次已在非`XNU_MONITOR`配置实现两个能力查询：
+`pmap_has_iofilter_protected_write=false`，对应受保护写操作仍panic；
+`pmap_cs_configuration=0`只表示不报告该配置子集，不能解释成安全策略处于默认或安全状态。
+语义对照同版本上游`osfmk/x86_64/pmap.c`及`osfmk/vm/pmap.h`。
+实际低优先级`-j2`增量构建已重编译pmap并生成新符号表，未改导出声明或关闭检查；
+完整make仍因剩余导出缺口失败，不能标记构建完成。
+
+剩余非RPC名称中还包括Apple平台IOMMU/DART/UAT接口。已确认原版同标签
+`osfmk/arm/pmap/pmap_iommu.c`与`pmap_cs.c`本身就是placeholder，
+因此不能笼统归因于本地漏复制代码。需要区分平台不提供的接口与应有的实现，
+明确设备能力及依赖后再决定平台导出契约；当前仍全部计为缺失，未删声明。
 已按原生工具的尾部`*`前缀匹配规则处理通配导出；将模式当作字面量会产生误报。
 [原始清单与输入哈希](reports/kernel-exports.json)保留了每条声明的位置和解码结果。
 规则来源为[同版本XNU的kextsymboltool](https://github.com/apple-oss-distributions/xnu/blob/c54f35ca767986246321eb901baf8f5ff7923f6a/SETUP/kextsymboltool/kextsymboltool.c)。

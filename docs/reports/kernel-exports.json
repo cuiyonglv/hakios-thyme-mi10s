@@ -1,7 +1,7 @@
 {
-  "defined_symbols": 22578,
+  "defined_symbols": 22580,
   "checked_declarations": 5638,
-  "symbol_file_sha256": "77af73a7259bcf6164371c4691376abe17225a841387e47a1ef3dcb0412795eb",
+  "symbol_file_sha256": "95e596d00e772cf29b48fe4dae16ff2e6a08cb7b2264bf1c466c602b6113320e",
   "export_files": [
     {
       "name": "BSDKernel.exports",
@@ -60,13 +60,13 @@
       "sha256": "00e242d4bb226e76c5d759be06606722bcd006dba267cfc5b5e42a0b44ea9dc9"
     }
   ],
-  "missing_declarations": 131,
+  "missing_declarations": 129,
   "with_existing_impl_candidate": 34,
   "missing_by_file": {
     "IOKit.exports": 89,
     "Libkern.exports": 2,
     "Private.arm64.exports": 35,
-    "Private.exports": 5
+    "Private.exports": 3
   },
   "missing": [
     {
@@ -853,22 +853,6 @@
       "exported": "__ZTV38OSAction_IOUserClient_KernelCompletion",
       "target": "__ZTV38OSAction_IOUserClient_KernelCompletion",
       "demangled": "vtable for OSAction_IOUserClient_KernelCompletion",
-      "likely_driverkit_rpc": false
-    },
-    {
-      "file": "Private.exports",
-      "line": 776,
-      "exported": "_pmap_has_iofilter_protected_write",
-      "target": "_pmap_has_iofilter_protected_write",
-      "demangled": "pmap_has_iofilter_protected_write",
-      "likely_driverkit_rpc": false
-    },
-    {
-      "file": "Private.exports",
-      "line": 780,
-      "exported": "_pmap_cs_configuration",
-      "target": "_pmap_cs_configuration",
-      "demangled": "pmap_cs_configuration",
       "likely_driverkit_rpc": false
     },
     {
