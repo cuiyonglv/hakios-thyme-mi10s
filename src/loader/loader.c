@@ -921,6 +921,7 @@ __asm__ (
         );
 
 static uint64_t smc_call(uint64_t id, uint64_t a1, uint64_t a2, uint64_t *r1, uint64_t *r2);
+static int wdt_hang_requested;
 static int wdt_physical;
 static uint32_t wdt_physical_ms;
 static void wdt_physical_pet(void);
@@ -2541,6 +2542,7 @@ smc_call(uint64_t id, uint64_t a1, uint64_t a2, uint64_t *r1, uint64_t *r2)
 static void
 wdt_pet(void)
 {
+	if (wdt_hang_requested) return;
 	if (wdt_armed && wdt_physical) {
 		wdt_physical_pet();
 	} else if (wdt_armed) {
@@ -4213,6 +4215,8 @@ fb_command(char *cmd)
 			if (!wdt_armed) {
 				fb_reply("FAIL", "watchdog not armed; hang test refused");
 			} else {
+				/* Reply transmission itself pumps USB and can pet: stop feeding first. */
+				wdt_hang_requested = 1;
 				fb_reply("OKAY", "watchdog test: not petting any more");
 				for (;;) {
 				}

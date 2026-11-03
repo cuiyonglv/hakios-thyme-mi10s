@@ -114,3 +114,10 @@ clamping, pet operations and continuous USB completion behavior.
 This backend still needs phone validation: remain resident longer than its
 deadline while petting, then stop petting and confirm automatic Android return.
 The earlier explicit expiry experiment does not establish that integration.
+
+The hang-test path suppresses petting **before** transmitting its OKAY reply.
+Reply transmission pumps USB events too; waiting until after that transfer could
+keep feeding the timer while the host had already received the acknowledgement.
+The host observes Windows device-tree state rather than treating a failed
+Fastboot command as proof of physical disconnection. USB re-enumeration timing
+can include the subsequent firmware/Android boot and is not an exact bite trace.

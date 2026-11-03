@@ -25,6 +25,7 @@ defines = '\n'.join(re.search(r'^#define ' + name + r'\s+.*$', source, re.M)[0]
                                  'QC_HYP_CALL_UID', 'QC_HYP_UID0', 'QC_HYP_UID1',
                                  'QC_HYP_UID2', 'QC_HYP_UID3'))
 arm = body_at(source.index('static void\nwdt_arm(void)'))
+pet = body_at(source.index('static void\nwdt_pet(void)'))
 hang = body_at(source.index('} else if (starts_with(cmd, "oem hang"))'))
 harness = r'''
 #include <assert.h>
@@ -35,7 +36,8 @@ harness = r'''
 static int wdt_armed, protocol, statuses, enables, disables, pets, times, replies;
 static uint64_t first_ctl, final_ctl, status_ret, time_ret, enable_ret, pet_ret, final_ret;
 static uint64_t smc_result_x3;
-static int uid_calls, uid_matches;
+static int uid_calls, uid_matches, wdt_hang_requested, wdt_physical;
+static void wdt_physical_pet(void) {pets++;}
 static void print(const char *format, ...) { (void)format; }
 static efi_status locate(const efi_guid *guid, void *registration, void **iface) {
  static const efi_guid expected=QCOM_SCM_GUID;
@@ -72,11 +74,12 @@ static void reset(void) {
  protocol=2; first_ctl=0; final_ctl=1;
  status_ret=time_ret=enable_ret=pet_ret=final_ret=0;
  statuses=enables=disables=pets=times=replies=0;
- uid_calls=0; uid_matches=1;
+ uid_calls=0; uid_matches=1; wdt_hang_requested=wdt_physical=0;
  wdt_armed=1; /* A rejected negotiation must clear any stale acceptance. */
 }
 '''
 harness += '\nstatic void wdt_arm(void) {\n' + arm + '\n}\n'
+harness += '\nstatic void wdt_pet(void) {\n' + pet + '\n}\n'
 harness += '\nstatic void hang_command(void) {\n' + hang + '\n}\n'
 harness += r'''
 int main(void) {
@@ -93,6 +96,8 @@ int main(void) {
  reset(); final_ctl=0; wdt_arm(); assert(!wdt_armed && disables==1);
  reset(); first_ctl=1; pet_ret=UINT64_MAX; wdt_arm(); assert(!wdt_armed && !disables); /* preserve preexisting service */
  wdt_armed=0; hang_command(); assert(replies==1);
+ reset();wdt_physical=1;wdt_pet();assert(pets==1);wdt_hang_requested=1;wdt_pet();assert(pets==1);
+ wdt_physical=0;wdt_pet();assert(pets==1); /* Suppress both backends during ACK transfer too. */
  puts("PASS watchdog: protocol discovery, rejected SMCs, existing enable state, readback, rollback and hang refusal");
 }
 '''
