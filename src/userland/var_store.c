@@ -130,9 +130,11 @@ boot_arg_is(const char *name, const char *value)
 		while (*p == ' ') {
 			p++;
 		}
-		if (strncmp(p, name, n) == 0 && p[n] == '=' && strncmp(p + n + 1, value, v) == 0 &&
-		    (p[n + 1 + v] == 0 || p[n + 1 + v] == ' ')) {
-			return 1;
+		if (strncmp(p, name, n) == 0 && p[n] == '=') {
+			/* Match init's first-occurrence semantics; a later duplicate must not
+			 * enable saving when init deliberately skipped restoring the volume. */
+			return strncmp(p + n + 1, value, v) == 0 &&
+			       (p[n + 1 + v] == 0 || p[n + 1 + v] == ' ');
 		}
 		while (*p && *p != ' ') {
 			p++;
@@ -1469,6 +1471,10 @@ main(int argc, char **argv, char **envp)
 	crc_init();
 	if (strcmp(what, "stamp") == 0) {
 		return stamp(argc > 2 ? argv[2] : "/private/var/redwood-stamp") ? 0 : 1;
+	}
+	if (strcmp(what, "watch") == 0 && !boot_arg_is("var_store", "1")) {
+		printf("var_store: automatic saving disabled by boot arguments\n");
+		return 0;
 	}
 	if (!storage_layout_init()) {
 		return 1;

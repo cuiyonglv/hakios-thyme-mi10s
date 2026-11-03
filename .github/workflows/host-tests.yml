@@ -36,6 +36,8 @@ jobs:
         run: python3 scripts/test-var-store-unpack.py
       - name: Persistence archive roundtrip and interrupted saves
         run: python3 scripts/test-var-store-roundtrip.py
+      - name: Autosaver obeys the restore enable flag
+        run: python3 scripts/test-var-store-autosave.py
       - name: Init restore supervision and service gate
         run: python3 scripts/test-restore-guard.py
       - name: Kernel export audit semantics
