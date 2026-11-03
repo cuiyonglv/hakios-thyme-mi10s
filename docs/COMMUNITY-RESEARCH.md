@@ -74,9 +74,19 @@ replacement for empty generated translation units, not a validated ABI replaceme
 Its [code generator](https://github.com/PureDarwin/iig-tools/blob/28010c688caab7eb5400b9c98faa5b1e538e0108/src/codegen.cpp)
 explicitly assigns its own FNV-based message IDs and warns against mixing headers
 with Apple-generated ones; the parser also discards class-body conditional guards.
-Next experiment must retain reviewed SDK declarations/IDs and check actual compile,
-message layout, conditional methods and dispatch semantics. Do not install its default
-generated headers into this port or treat generated output as Apple ABI compatibility.
+An isolated trial retained SDK IDs and linked, but exposed incompatible argument
+ordering and serialized-container descriptors. Correct IDs alone do not repair
+the wire ABI. This generator's output was therefore not selected.
+
+The sweet workflow's Xcode 15 selection provided a better route: a targeted
+[native Apple IIG workflow](../.github/workflows/apple-iig.yml) now regenerates
+all 17 original definitions from pinned XNU 8796.121.2. The successful
+[run](https://github.com/cuiyonglv/hakios-thyme-mi10s/actions/runs/41567209508)
+used Xcode 15.0.1 (IIG DriverKit-286). Its [source cache](../tools/apple-iig-8796/README.md)
+includes paired headers/implementations, licenses and provenance hashes.
+All 17 pairs compile and an isolated kernel relink has no undefined imports.
+The original export audit still reports 35 Apple-specific IOMMU/DART/UAT symbols;
+neither that platform selection nor phone behavior is validated by this result.
 
 - Instrument restore phases (slot header, checksum pass, unpack and last entry)
   and collect phone logs before choosing a timeout/recovery policy. A timeout

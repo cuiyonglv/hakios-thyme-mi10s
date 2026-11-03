@@ -2,3 +2,4 @@
 *.py text eol=lf
 src/kernel/bsd/conf/files text eol=lf
 src/kernel/libkern/conf/files text eol=lf
+tools/apple-iig-8796/** text eol=lf

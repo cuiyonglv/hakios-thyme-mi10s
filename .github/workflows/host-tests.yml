@@ -10,6 +10,8 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Apple IIG source cache integrity and rejection paths
+        run: python3 scripts/test-cached-apple-iig.py
       - name: Image packer and atomic output
         run: python3 scripts/test-build-image.py
       - name: Shared legacy storage contract
