@@ -2605,6 +2605,7 @@ install_exception_hook(void)
 
 struct payload_info {
 	const uint8_t *kernel;
+	uint32_t kernel_size;
 	const uint8_t *ramdisk;
 	uint32_t ramdisk_size;
 	const char *cmdline;
@@ -2623,50 +2624,213 @@ parse_number(const char *c, unsigned base)
 		if (d >= base) {
 			break;
 		}
+		if (v > (~0ULL - d) / base) return 0;
 		v = v * base + d;
 	}
 	return v;
 }
 
+/* BootShim gives us a reserved region, not a transfer count. Once any loader
+ * transfer starts, only a completed transfer may publish its actual byte count. */
+static uint64_t payload_bytes = PAYLOAD_MAX_SIZE;
+static void payload_forget(void) { payload_bytes = 0; }
+static void payload_accept(uint64_t bytes) { payload_bytes = bytes; }
+
+static int
+payload_text_length(const char *text, uint32_t bytes, uint32_t *length)
+{
+	uint32_t n = 0;
+	while (n < bytes && text[n] != 0) n++;
+	if (n == bytes) return 0;
+	*length = n;
+	return 1;
+}
+
+static int
+payload_number(const char *text, uint32_t bytes, unsigned base, uint64_t *value)
+{
+	uint32_t length, at = 0;
+	uint64_t result = 0;
+	if (!payload_text_length(text, bytes, &length) || length == 0) return 0;
+	if (base == 16 && length > 2 && text[0] == '0' && (text[1] == 'x' || text[1] == 'X')) at = 2;
+	for (; at < length; at++) {
+		unsigned char c = (unsigned char)text[at];
+		uint64_t digit = c >= '0' && c <= '9' ? c - '0' : c >= 'a' && c <= 'f' ? c - 'a' + 10 :
+		    c >= 'A' && c <= 'F' ? c - 'A' + 10 : 16;
+		if (digit >= base || result > (~0ULL - digit) / base) return 0;
+		result = result * base + digit;
+	}
+	*value = result;
+	return 1;
+}
+
+static int
+parse_payload_bytes(struct payload_info *pi, const uint8_t *data, uint64_t bytes, int verbose)
+{
+	struct payload_header header;
+	struct payload_info parsed;
+	uint32_t seen = 0;
+	if (pi == NULL) return 0;
+	memset(pi, 0, sizeof(*pi));
+	pi->cmdline = "";
+	memset(&parsed, 0, sizeof(parsed));
+	parsed.cmdline = "";
+	if (data == NULL || bytes < sizeof(header) || bytes > PAYLOAD_MAX_SIZE ||
+	    (uintptr_t)data > ~(uintptr_t)0 - bytes) return 0;
+	memcpy(&header, data, sizeof(header));
+	if (header.magic != PAYLOAD_MAGIC || header.size > bytes - sizeof(header)) return 0;
+	const uint8_t *p = data + sizeof(header);
+	uint64_t remaining = header.size;
+	while (remaining != 0) {
+		struct payload_entry entry;
+		if (remaining < sizeof(entry)) return 0;
+		memcpy(&entry, p, sizeof(entry));
+		uint32_t name_length;
+		if (!payload_text_length(entry.name, sizeof(entry.name), &name_length)) return 0;
+		if (name_length == 0) {
+			/* Old producers may use an all-zero terminal entry. */
+			for (uint64_t i = 0; i < remaining; i++) if (p[i] != 0) return 0;
+			break;
+		}
+		uint64_t padded = ((uint64_t)entry.size + 15) & ~15ULL;
+		if (entry.reserved != 0 || padded > remaining - sizeof(entry)) return 0;
+		const char *text = (const char *)(p + sizeof(entry));
+		uint32_t bit = str_eq(entry.name, "kernel") ? 1 : str_eq(entry.name, "ramdisk") ? 2 :
+		    str_eq(entry.name, "cmdline") ? 4 : str_eq(entry.name, "physbase") ? 8 :
+		    str_eq(entry.name, "rdres") ? 16 : str_eq(entry.name, "checkpoint") ? 32 :
+		    str_eq(entry.name, "usb") ? 64 : 0;
+		if (seen & bit) return 0;
+		seen |= bit;
+		if (verbose) print("payload entry '%s' size %x\n", entry.name, (uint64_t)entry.size);
+		if (bit == 1 || bit == 2) {
+			if (entry.size == 0) return 0;
+			if (bit == 1) { parsed.kernel = (const uint8_t *)text; parsed.kernel_size = entry.size; }
+			else { parsed.ramdisk = (const uint8_t *)text; parsed.ramdisk_size = entry.size; }
+		} else if (bit == 4) {
+			uint32_t length;
+			if (!payload_text_length(text, entry.size, &length) || length >= BOOT_LINE_LENGTH) return 0;
+			parsed.cmdline = text;
+		} else if (bit == 8) {
+			if (!payload_number(text, entry.size, 16, &parsed.forced_base) ||
+			    (parsed.forced_base & (BASE_ALIGN - 1)) || parsed.forced_base > ~0ULL - MAX_MEM_SIZE) return 0;
+		} else if (bit == 16) {
+			if (!payload_number(text, entry.size, 16, &parsed.resident_rd) ||
+			    parsed.resident_rd > MAX_MEM_SIZE - RESIDENT_RD_OFFSET - RESIDENT_RD_RESERVE) return 0;
+		} else if (bit == 32) {
+			if (!payload_number(text, entry.size, 10, &parsed.checkpoint)) return 0;
+		} else if (bit == 64) parsed.usb_mode = 1;
+		p += sizeof(entry) + padded;
+		remaining -= sizeof(entry) + padded;
+	}
+	*pi = parsed;
+	return 1;
+}
+
 static int
 parse_payload(struct payload_info *pi, int verbose)
 {
-	struct payload_header *ph = (struct payload_header *)PAYLOAD_BASE;
+	return parse_payload_bytes(pi, (const uint8_t *)PAYLOAD_BASE, payload_bytes, verbose);
+}
 
-	memset(pi, 0, sizeof(*pi));
-	pi->cmdline = "";
-	if (ph->magic != PAYLOAD_MAGIC) {
-		print("no payload at %x (magic %x)\n", PAYLOAD_BASE, (uint64_t)ph->magic);
-		return 0;
+struct kernel_layout { uint64_t low, high, entry; };
+#define MAX_KERNEL_SEGMENTS 128u
+
+static int
+kernel_image_valid(const uint8_t *data, uint64_t bytes, struct kernel_layout *result)
+{
+	const struct segment_command_64 *segments[MAX_KERNEL_SEGMENTS];
+	struct kernel_layout layout = { ~0ULL, 0, 0 };
+	unsigned count = 0, threads = 0;
+	if (data == NULL || bytes < sizeof(struct mach_header_64) || bytes > PAYLOAD_MAX_SIZE ||
+	    ((uintptr_t)data & 7) || (uintptr_t)data > ~(uintptr_t)0 - bytes) return 0;
+	const struct mach_header_64 *header = (const void *)data;
+	if (header->magic != MH_MAGIC_64 || header->cputype != 0x100000c ||
+	    (header->cpusubtype & 0xffffff) > 1 || header->filetype != 2 ||
+	    header->sizeofcmds > bytes - sizeof(*header) || header->ncmds == 0 ||
+	    header->ncmds > header->sizeofcmds / sizeof(struct load_command)) return 0;
+	uint64_t at = sizeof(*header), end = at + header->sizeofcmds;
+	for (uint32_t i = 0; i < header->ncmds; i++) {
+		if (end - at < sizeof(struct load_command)) return 0;
+		const struct load_command *lc = (const void *)(data + at);
+		if (lc->cmdsize < sizeof(*lc) || (lc->cmdsize & 7) || lc->cmdsize > end - at) return 0;
+		if (lc->cmd == LC_SEGMENT_64) {
+			if (lc->cmdsize < sizeof(struct segment_command_64)) return 0;
+			const struct segment_command_64 *segment = (const void *)lc;
+			if (segment->nsects > (lc->cmdsize - sizeof(*segment)) / 80 ||
+			    segment->fileoff > bytes || segment->filesize > bytes - segment->fileoff ||
+			    segment->filesize > segment->vmsize) return 0;
+			if (segment->vmsize != 0) {
+				if (count == MAX_KERNEL_SEGMENTS || segment->vmaddr < KERNEL_VIRT_BASE + KERNEL_LINK_OFFSET ||
+				    segment->vmaddr > ~0ULL - segment->vmsize) return 0;
+				uint64_t high = segment->vmaddr + segment->vmsize;
+				if (high - KERNEL_VIRT_BASE > MAX_MEM_SIZE || high > ~0ULL - (PAGE_SIZE_MAX - 1)) return 0;
+				for (unsigned n = 0; n < count; n++) {
+					if (segment->vmaddr < segments[n]->vmaddr + segments[n]->vmsize &&
+					    segments[n]->vmaddr < high) return 0;
+				}
+				segments[count++] = segment;
+				if (segment->vmaddr < layout.low) layout.low = segment->vmaddr;
+				if (high > layout.high) layout.high = high;
+			}
+		} else if (lc->cmd == LC_UNIXTHREAD) {
+			if (++threads != 1 || lc->cmdsize != 288) return 0;
+			const uint32_t *state = (const void *)((const uint8_t *)lc + 8);
+			if (state[0] != 6 || state[1] != 68) return 0;
+			memcpy(&layout.entry, (const uint8_t *)lc + 16 + 32 * 8, sizeof(layout.entry));
+		}
+		at += lc->cmdsize;
 	}
-	const uint8_t *p = (const uint8_t *)(ph + 1), *pend = p + ph->size;
-	while (p + sizeof(struct payload_entry) <= pend) {
-		const struct payload_entry *e = (const struct payload_entry *)p;
-		const char *text = (const char *)(p + sizeof(*e));
-		if (e->name[0] == 0) {
-			break;
-		}
-		if (verbose) {
-			print("payload entry '%s' size %x\n", e->name, (uint64_t)e->size);
-		}
-		if (str_eq(e->name, "ramdisk")) {
-			pi->ramdisk = p + sizeof(*e);             /* becomes /dev/md0, the root device */
-			pi->ramdisk_size = e->size;
-		} else if (str_eq(e->name, "kernel")) {
-			pi->kernel = p + sizeof(*e);
-		} else if (str_eq(e->name, "cmdline")) {
-			pi->cmdline = text;
-		} else if (str_eq(e->name, "physbase")) {
-			pi->forced_base = parse_number(text, 16); /* testing aid; must be free RAM */
-		} else if (str_eq(e->name, "rdres")) {
-			pi->resident_rd = parse_number(text, 16); /* e.g. loaded there by QEMU; see RESIDENT_RD_OFFSET */
-		} else if (str_eq(e->name, "checkpoint")) {
-			pi->checkpoint = parse_number(text, 10);  /* where the kernel should stop and come back */
-		} else if (str_eq(e->name, "usb")) {
-			pi->usb_mode = 1;                         /* stay in the loader and take commands over USB */
-		}
-		p += sizeof(*e) + ((e->size + 15) & ~15u);
+	if (at != end || count == 0 || threads != 1 || (layout.entry & 3)) return 0;
+	int executable = 0;
+	for (unsigned n = 0; n < count; n++) {
+		const struct segment_command_64 *segment = segments[n];
+		executable |= (segment->initprot & 4) && layout.entry >= segment->vmaddr &&
+		    layout.entry - segment->vmaddr < segment->filesize;
 	}
+	if (!executable) return 0;
+	if (result != NULL) *result = layout;
+	return 1;
+}
+
+struct kernel_memory {
+	uint64_t low, high, ramdisk, ramdisk_size, resident, resident_size, dt, boot_args, top;
+	int ramdisk_resident;
+};
+
+static int
+kernel_memory_plan(uint64_t base, uint64_t bytes, const struct kernel_layout *layout,
+    uint64_t small_bytes, uint64_t resident_bytes, struct kernel_memory *result)
+{
+	struct kernel_memory plan = {0};
+	const uint64_t overhead = 0x10000 + PAGE_SIZE_MAX + 0x4000000;
+	if (layout == NULL || bytes == 0 || bytes > MAX_MEM_SIZE || (base & (BASE_ALIGN - 1)) || base > ~0ULL - bytes ||
+	    layout->low < KERNEL_VIRT_BASE || layout->high < layout->low ||
+	    layout->high - KERNEL_VIRT_BASE > MAX_MEM_SIZE || small_bytes > PAYLOAD_MAX_SIZE) return 0;
+	uint64_t low = layout->low - KERNEL_VIRT_BASE;
+	uint64_t high = (layout->high - KERNEL_VIRT_BASE + PAGE_SIZE_MAX - 1) & ~(PAGE_SIZE_MAX - 1);
+	uint64_t small = (small_bytes + PAGE_SIZE_MAX - 1) & ~(PAGE_SIZE_MAX - 1);
+	if (high > bytes || small > bytes - high) return 0;
+	uint64_t rd = high, rd1 = 0, res = 0;
+	if (resident_bytes != 0) {
+		if (bytes < RESIDENT_RD_OFFSET + RESIDENT_RD_RESERVE ||
+		    resident_bytes > bytes - RESIDENT_RD_OFFSET - RESIDENT_RD_RESERVE ||
+		    high + small > RESIDENT_RD_OFFSET) return 0;
+		res = (resident_bytes + PAGE_SIZE_MAX - 1) & ~(PAGE_SIZE_MAX - 1);
+		if (small == 0) {
+			rd = RESIDENT_RD_OFFSET;
+			small = res;
+			res = 0;
+			plan.ramdisk_resident = 1;
+		} else rd1 = RESIDENT_RD_OFFSET;
+	}
+	uint64_t end = res != 0 ? rd1 + res : rd + small;
+	if (end > bytes || overhead > bytes - end) return 0;
+	plan.low = base + low; plan.high = base + high;
+	plan.ramdisk = base + rd; plan.ramdisk_size = small;
+	plan.resident = res != 0 ? base + rd1 : 0; plan.resident_size = res;
+	plan.dt = base + end; plan.boot_args = plan.dt + 0x10000;
+	plan.top = plan.boot_args + PAGE_SIZE_MAX;
+	if (result != NULL) *result = plan;
 	return 1;
 }
 
@@ -2793,20 +2957,25 @@ choose_window(const struct payload_info *pi)
 		print("GetMemoryMap failed\n");
 		return 0;
 	}
+	if (desc_size < sizeof(efi_memory_descriptor) || map_size > sizeof(map_buf) || map_size % desc_size) return 0;
 	for (uint64_t off = 0; off < map_size; off += desc_size) {
 		efi_memory_descriptor *d = (efi_memory_descriptor *)(map_buf + off);
 		if (d->type != EfiConventionalMemory) {
 			continue;
 		}
+		if (d->pages > (~0ULL >> 12) || d->phys_start > ~0ULL - (d->pages << 12)) continue;
 		uint64_t lo = d->phys_start, hi = d->phys_start + (d->pages << 12);
 		/* the payload sits in RAM that UEFI may consider free: stay clear of it */
 		if (lo < pay_hi && hi > pay_lo) {
-			if (pay_lo - lo > hi - pay_hi && pay_lo > lo) {
+			uint64_t before = pay_lo > lo ? pay_lo - lo : 0;
+			uint64_t after = hi > pay_hi ? hi - pay_hi : 0;
+			if (before > after) {
 				hi = pay_lo;
 			} else {
 				lo = pay_hi;
 			}
 		}
+		if (lo > ~0ULL - (BASE_ALIGN - 1)) continue;
 		lo = (lo + BASE_ALIGN - 1) & ~(BASE_ALIGN - 1);
 		hi &= ~(BASE_ALIGN - 1);
 		if (hi > lo && hi - lo > best_size) {
@@ -2822,6 +2991,8 @@ choose_window(const struct payload_info *pi)
 	if (best_size > MAX_MEM_SIZE) {
 		best_size = MAX_MEM_SIZE;
 	}
+	if (best_size == 0 || (best_base & (BASE_ALIGN - 1)) || best_base > ~0ULL - best_size ||
+	    (best_base < pay_hi && pay_lo < best_base + best_size)) return 0;
 	/* UEFI stays alive while the kernel runs, so the kernel must own all of its window. */
 	uint64_t claim = best_base;
 	efi_status s = BS->allocate_pages(AllocateAddress, EfiLoaderData, best_size >> 12, &claim);
@@ -2862,31 +3033,14 @@ run_kernel(int have_checkpoint, uint64_t checkpoint)
 	}
 	const uint8_t *kernel = pi.kernel;
 	const struct mach_header_64 *mh = (const struct mach_header_64 *)kernel;
-	if (mh->magic != MH_MAGIC_64) {
-		print("kernel is not a 64-bit Mach-O\n");
+	struct kernel_layout layout;
+	if (!kernel_image_valid(kernel, pi.kernel_size, &layout)) {
+		print("kernel has an invalid or unsupported arm64 Mach-O layout\n");
 		return 0;
 	}
 
 	/* --- kernel extent -------------------------------------------------- */
-	uint64_t vm_lo = ~0ULL, vm_hi = 0, entry_va = 0;
-	const struct load_command *lc = (const struct load_command *)(mh + 1);
-	for (uint32_t i = 0; i < mh->ncmds; i++, lc = (const void *)((const uint8_t *)lc + lc->cmdsize)) {
-		if (lc->cmd == LC_SEGMENT_64) {
-			const struct segment_command_64 *sg = (const void *)lc;
-			if (sg->vmsize == 0) {
-				continue;
-			}
-			if (sg->vmaddr < vm_lo) {
-				vm_lo = sg->vmaddr;
-			}
-			if (sg->vmaddr + sg->vmsize > vm_hi) {
-				vm_hi = sg->vmaddr + sg->vmsize;
-			}
-		} else if (lc->cmd == LC_UNIXTHREAD) {
-			/* cmd, cmdsize, flavor, count, x0..x28, fp, lr, sp, pc */
-			entry_va = ((const uint64_t *)((const uint8_t *)lc + 16))[32];
-		}
-	}
+	uint64_t vm_lo = layout.low, vm_hi = layout.high, entry_va = layout.entry;
 	print("kernel va %x..%x entry %x\n", vm_lo, vm_hi, entry_va);
 	if (vm_lo < KERNEL_VIRT_BASE + KERNEL_LINK_OFFSET || entry_va == 0) {
 		print("unexpected kernel layout\n");
@@ -2898,47 +3052,22 @@ run_kernel(int have_checkpoint, uint64_t checkpoint)
 
 	uint64_t phys_base = win_base;
 	uint64_t slide = phys_base - KERNEL_VIRT_BASE; /* pa = va + slide */
-	uint64_t kern_lo = vm_lo + slide, kern_hi = (vm_hi + slide + PAGE_SIZE_MAX - 1) & ~(PAGE_SIZE_MAX - 1);
-	/* The ramdisk must sit inside the kernel's static mapping, i.e. below topOfKernelData. */
-	uint64_t rd_pa = kern_hi;
-	uint64_t rd_size = (pi.ramdisk_size + PAGE_SIZE_MAX - 1) & ~(PAGE_SIZE_MAX - 1);
-	int rd_resident = 0;
-	/* A resident image next to a payload ramdisk: two disks (which is which is decided where the device tree is written). */
-	uint64_t rd1_pa = 0, rd1_size = 0;
-
-	if (pi.resident_rd != 0) {
-		resident_rd_size = pi.resident_rd;
-	}
-	if (resident_rd_size != 0) {
-		uint64_t res_pa = phys_base + RESIDENT_RD_OFFSET;
-		uint64_t res_size = (resident_rd_size + PAGE_SIZE_MAX - 1) & ~(PAGE_SIZE_MAX - 1);
-
-		if (kern_hi + rd_size > res_pa) {
-			print("kernel and ramdisk overlap the resident image\n");
-			return 0;
-		}
-		if (rd_size == 0) {
-			rd_pa = res_pa;
-			rd_size = res_size;
-			rd_resident = 1;
-		} else {
-			rd1_pa = res_pa;
-			rd1_size = res_size;
-		}
-	}
-	/* everything up to topOfKernelData is the kernel's static region: it must cover both images */
-	uint64_t dt_pa = rd1_size != 0 ? rd1_pa + rd1_size : rd_pa + rd_size;
-	uint64_t dt_max = 0x10000;
-	uint64_t ba_pa = dt_pa + dt_max;
-	uint64_t top = ba_pa + PAGE_SIZE_MAX;
-
-	if (win_size < top - phys_base + 0x4000000ULL) {
-		print("not enough contiguous RAM\n");
+	/* Plan with bounded offsets before constructing any physical pointer. */
+	uint64_t resident = pi.resident_rd != 0 ? pi.resident_rd : resident_rd_size;
+	struct kernel_memory memory;
+	if (!kernel_memory_plan(phys_base, win_size, &layout, pi.ramdisk_size, resident, &memory)) {
+		print("kernel, ramdisks and boot metadata do not fit the claimed memory window\n");
 		return 0;
 	}
+	resident_rd_size = resident;
+	uint64_t kern_lo = memory.low, kern_hi = memory.high;
+	uint64_t rd_pa = memory.ramdisk, rd_size = memory.ramdisk_size;
+	uint64_t rd1_pa = memory.resident, rd1_size = memory.resident_size;
+	int rd_resident = memory.ramdisk_resident;
+	uint64_t dt_pa = memory.dt, ba_pa = memory.boot_args, top = memory.top;
 
 	/* --- load segments -------------------------------------------------- */
-	lc = (const struct load_command *)(mh + 1);
+	const struct load_command *lc = (const struct load_command *)(mh + 1);
 	for (uint32_t i = 0; i < mh->ncmds; i++, lc = (const void *)((const uint8_t *)lc + lc->cmdsize)) {
 		const struct segment_command_64 *sg = (const void *)lc;
 		if (lc->cmd != LC_SEGMENT_64 || sg->vmsize == 0) {
@@ -3015,7 +3144,7 @@ run_kernel(int have_checkpoint, uint64_t checkpoint)
 	/* where the kernel will show its signs of life, and how long it has said it will run */
 	const struct kernel_live *kernel_live = NULL;
 	uint64_t kernel_budget = 0;
-	for (uint64_t *q = (uint64_t *)kern_lo; q < (uint64_t *)kern_hi; q++) {
+	for (uint64_t *q = (uint64_t *)kern_lo; kern_hi - (uint64_t)(uintptr_t)q >= sizeof(*kernel_live); q++) {
 		if (*q == KERNEL_LIVE_MAGIC) {
 			kernel_live = (const struct kernel_live *)q;
 			break;
@@ -3031,7 +3160,7 @@ run_kernel(int have_checkpoint, uint64_t checkpoint)
 	}
 
 	/* Give the kernel the address of our return stub and the checkpoint to stop at. */
-	for (uint64_t *q = (uint64_t *)kern_lo; q < (uint64_t *)kern_hi; q++) {
+	for (uint64_t *q = (uint64_t *)kern_lo; kern_hi - (uint64_t)(uintptr_t)q >= 4 * sizeof(*q); q++) {
 		if (*q == 0x545352444C554E58ULL /* "XNULDRST" */) {
 			q[1] = kernel_mpidr != this_mpidr ? (uint64_t)(uintptr_t)&other_cpu_return_stub :
 			    (uint64_t)(uintptr_t)&loader_return_stub;
@@ -3703,6 +3832,25 @@ fb_reply_data(uint64_t len)
 }
 
 static int
+receive_download(uint8_t *destination, uint64_t total, int to_ramdisk)
+{
+	uint64_t received = 0;
+	if (to_ramdisk) resident_rd_size = 0;
+	else payload_forget();
+	if (destination == NULL || total == 0 || (!to_ramdisk && total > PAYLOAD_MAX_SIZE)) return 0;
+	while (received < total) {
+		uint64_t want = total - received > USB_CHUNK ? USB_CHUNK : total - received;
+		int64_t bytes = usb_rx(usb_rx_buf, want);
+		if (bytes <= 0 || (uint64_t)bytes > want) return 0;
+		memcpy(destination + received, usb_rx_buf, (size_t)bytes);
+		received += (uint64_t)bytes;
+	}
+	if (to_ramdisk) resident_rd_size = total;
+	else payload_accept(total);
+	return 1;
+}
+
+static int
 starts_with(const char *s, const char *prefix)
 {
 	while (*prefix) {
@@ -3771,7 +3919,7 @@ fb_command(char *cmd)
 			download_to_ramdisk = 1;
 			fb_reply("OKAY", "");
 		} else if (starts_with(cmd, "download:")) {
-			uint64_t total = parse_number(cmd + 9, 16), got = 0;
+			uint64_t total = parse_number(cmd + 9, 16);
 			uint64_t limit = PAYLOAD_MAX_SIZE - 0x100000;
 			uint8_t *dest = (uint8_t *)PAYLOAD_BASE;
 			int to_ramdisk = download_to_ramdisk;
@@ -3780,26 +3928,13 @@ fb_command(char *cmd)
 			if (to_ramdisk) {
 				limit = win_size - RESIDENT_RD_OFFSET - RESIDENT_RD_RESERVE;
 				dest = (uint8_t *)(win_base + RESIDENT_RD_OFFSET);
-				resident_rd_size = 0;
 			}
 			if (total == 0 || total > limit) {
 				fb_reply("FAIL", "bad size");
 				return;
 			}
 			fb_reply_data(total);
-			while (got < total) {
-				uint64_t want = total - got > USB_CHUNK ? USB_CHUNK : total - got;
-				int64_t r = usb_rx(usb_rx_buf, want);
-				if (r <= 0) {
-					break;
-				}
-				memcpy(dest + got, usb_rx_buf, (size_t)r);
-				got += (uint64_t)r;
-			}
-			if (got == total) {
-				if (to_ramdisk) {
-					resident_rd_size = total;
-				}
+			if (receive_download(dest, total, to_ramdisk)) {
 				fb_reply("OKAY", "");
 			} else {
 				fb_reply("FAIL", "short download");
@@ -4306,11 +4441,14 @@ ios_storage_try_boot(void)
 		print("ios: payload size is not sane\n");
 		return;
 	}
+	/* Do not expose a partially read or unverified install as a RAM payload.
+	 * efi_main may still hold an earlier have_payload flag from BootShim. */
+	payload_forget();
 	if (!read_partition_bytes(ios, payload_at, hdr.payload_len, (uint8_t *)PAYLOAD_BASE)) {
 		return;
 	}
 	ios_colour(0xFF00FF00);                /* green: payload read */
-	if (!parse_payload(&pi, 1) || pi.kernel == NULL) {
+	if (!parse_payload_bytes(&pi, (const uint8_t *)PAYLOAD_BASE, hdr.payload_len, 1) || pi.kernel == NULL) {
 		print("ios: the payload has no kernel\n");
 		return;
 	}
@@ -4347,6 +4485,7 @@ ios_storage_try_boot(void)
 		return;
 	}
 	resident_rd_size = hdr.system_len;
+	payload_accept(hdr.payload_len);
 	ios_colour(0xFFFFFFFF);                /* white: running the kernel */
 	print("ios: stage all done, running the kernel from the flash\n");
 	flush_log();

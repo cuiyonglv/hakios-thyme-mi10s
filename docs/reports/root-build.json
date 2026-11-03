@@ -1,0 +1,69 @@
+{
+  "schema": 1,
+  "status": "experimental root image; no phone or kernel acceptance",
+  "userland_revision": "911fe2ef2b788c6349497d30b4f4734102a85875",
+  "userland_record_sha256": "5e2e204bccdb6036941d61108cb8c4b64a05582225b5fbf01d38d90873d91453",
+  "template_tree_sha256": "570800e26653b802fa84d8c4e4c4a5b91cbd14a0f79cc38ed30fa37e1126d40d",
+  "image_sha256": "495b1fcbffaf850c72daae2a2c6ef7d08fcfd9fb1913258830014b2d07fe921b",
+  "image_bytes": 6746112,
+  "program_sha256": {
+    "init": "56032cf07157f0c707ac8c7daa41a6f8f1c01c32e158ea1d27cf2d7cf3825f3f",
+    "var_store": "9254ec750175a84207c9b02bdb4dbe4b6d630aa863489f0bf2840b1f826ca0ae"
+  },
+  "reader_sha256": "16189e31caeee737c4d1e8328a4d3d735016d98c3c880fcdc0ace1676776dcdf",
+  "apfsck_sha256": "d2e9da1aebbe2a0ce88819a829ba3312e04679a0efa5714d8c696e2e8e13bb45",
+  "mkapfs_sha256": "3595dab647b4161650d2a3c62d2a4b79b2217b64ee6fdfc576f49bc99db67a7f",
+  "stage_script_sha256": "235767b4377b4e9f417bc49ce463903ba1f60e55f5518003d9edfc509857d667",
+  "validation": "apfsck and independent reader census; executable SHA-256 readback",
+  "firmware": {
+    "schema": 1,
+    "target": "thyme",
+    "stock_release": "OS1.0.4.0.TGACNXM",
+    "source_archive_md5": "778cda43017aacde0d7a04ff85b872f8",
+    "phone_match_verified": false,
+    "purpose": "Offline GPU/WiFi firmware staging; not device or radio acceptance",
+    "files": {
+      "fw/a650_gmu.bin": {
+        "bytes": 41548,
+        "sha256": "df79fa8482fcc7587bb239b9c9e2b24bce4729893b990fe3f82b30da8175b01c",
+        "source": "vendor_a:/firmware/a650_gmu.bin"
+      },
+      "fw/a650_sqe.fw": {
+        "bytes": 31632,
+        "sha256": "b4c27420fd6a5c6b511b254cc0fad8cdd40eea38ceb3418f895a1084f4460487",
+        "source": "vendor_a:/firmware/a650_sqe.fw"
+      },
+      "fw/a650_zap.mdt": {
+        "bytes": 6860,
+        "sha256": "6acee08d40803c284487e9c29de38bcf2adafa1e2752bcbb516845d02191bb80",
+        "source": "vendor_a:/firmware/a650_zap.mdt"
+      },
+      "fw/a650_zap.b02": {
+        "bytes": 1676,
+        "sha256": "a415e5452fa8f597670a6e51010e97bfabca7d20fbce8044caed64d9d5873113",
+        "source": "vendor_a:/firmware/a650_zap.b02"
+      },
+      "fw/qca6390/amss20.bin": {
+        "bytes": 4352144,
+        "sha256": "d5f1267727e68e8bc6b465ad110be45f216ad240e3a1a953f317c886cb70952d",
+        "source": "NON-HLOS:/image/qca6390/amss20.bin"
+      },
+      "fw/qca6390/m3.bin": {
+        "bytes": 266684,
+        "sha256": "8c9fba0aeaad8079fe3c0e5d6ac3928f93369313f610b104bffc2f6363ae7b78",
+        "source": "NON-HLOS:/image/qca6390/m3.bin"
+      },
+      "fw/qca6390/bd_j2s.elf": {
+        "bytes": 57908,
+        "sha256": "75c1589a9eef4c217c3c4e6c33c3dfefd868c6a28bdd126defd3abdb8042e26f",
+        "source": "NON-HLOS:/image/qca6390/bd_j2s.elf"
+      },
+      "fw/qca6390/regdb.bin": {
+        "bytes": 19348,
+        "sha256": "8a96951dea7a5fef2846a8330e859c471b8a688a358cb2c379853ecec2578419",
+        "source": "NON-HLOS:/image/qca6390/regdb.bin"
+      }
+    }
+  },
+  "firmware_live_phone_match": "not checked by this offline build"
+}

@@ -5,9 +5,11 @@ The official OS1.0.4.0.TGACNXM fastboot archive has downloaded completely:
 before selected images were extracted locally. No flash scripts were executed,
 and no vendor images or firmware blobs are uploaded to this repository.
 
-This matches the last observed Android release, not a fresh live comparison:
-the phone currently does not enumerate in ADB, Fastboot or Windows Xiaomi USB
-device discovery. A package is not a backup of the phone's unique partitions.
+The phone reconnected on 2026-11-03. Fresh ADB reads confirm the same Android
+release and slot B; the vendor fingerprint and build timestamp `1717598198`
+match the extracted vendor partition. This is a metadata comparison, not a
+byte-for-byte backup or proof that the active boot partition is unmodified.
+A package is not a backup of the phone's unique partitions.
 
 Official AOSP unpack_bootimg at revision
 `6cb944b82c819b691bc21d8228e155f1db07a446` identifies boot.img as Android header
@@ -53,6 +55,12 @@ from the finished APFS and checked byte for byte along with init and var_store.
 The existing `--plain fw` setting keeps firmware uncompressed for the early kernel
 reader. An offline manifest is input consistency evidence, not proof of a live
 phone match or permission to transmit with an untested radio.
+
+The resulting root is 6,746,112 bytes, SHA-256
+`495b1fcbffaf850c72daae2a2c6ef7d08fcfd9fb1913258830014b2d07fe921b`.
+Independent apfsck is clean; all 469 entries match the staging tree, and both
+programs plus all eight firmware files pass SHA-256 readback. The donor template
+remains unchanged. See [the offline component record](reports/root-build.json).
 
 Next: verify the resulting root image, build/audit the
 optional ath11k adaptation, review the phone-specific UEFI drivers, and obtain
