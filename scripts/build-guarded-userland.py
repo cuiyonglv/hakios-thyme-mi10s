@@ -43,6 +43,7 @@ def main():
                   **{f'external/{name}': args.mini_dir / name for name in ('mini.h', 'mini.c', 'start.S')},
                   'port/var_store.c': ROOT / 'src/userland/var_store.c',
                   'port/restore_guard.inc': ROOT / 'src/userland/restore_guard.inc',
+                  'port/thyme_storage_layout.h': ROOT / 'src/kernel/bsd/sys/thyme_storage_layout.h',
                   'port/prepare-init.py': ROOT / 'scripts/prepare-init.py',
                   'port/build-guarded-userland.py': Path(__file__).resolve()}
         before = {name: digest(path) for name, path in inputs.items()}

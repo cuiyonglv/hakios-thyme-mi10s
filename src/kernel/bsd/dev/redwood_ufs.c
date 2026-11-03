@@ -46,6 +46,7 @@
 #include <sys/conf.h>
 #include <sys/disk.h>
 #include <sys/errno.h>
+#include <sys/thyme_storage_layout.h>
 #include <sys/systm.h>
 #include <sys/proc.h>
 #include <sys/sysctl.h>
@@ -75,7 +76,7 @@ extern void FlushPoC_DcacheRegion(vm_offset_t va, size_t length);   /* osfmk/arm
  * (blocks 0..1374207) and the two cryptexes behind it (..2042367). The loader keeps the same
  * bounds and the GUIDs of the partition besides (xnuloader/loader.c, BLOCK_WRITE_FIRST).
  */
-#define UFS_WRITE_FIRST    611200ULL                   /* darwin's blocks of 4096: past this port's iOS image */
+#define UFS_WRITE_FIRST    THYME_STORE_FIRST_BLOCK
 #define UFS_DARWIN_FIRST   60831744ULL                  /* its first LBA on the unit, as the GPT has it */
 #define UFS_DARWIN_BLOCKS  1048571ULL
 

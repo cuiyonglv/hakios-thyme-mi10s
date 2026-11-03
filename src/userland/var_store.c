@@ -45,12 +45,13 @@
  * swap, its logs) or what is grafted from a read-only image at every boot anyway.
  */
 #include "mini.h"
+#include "../kernel/bsd/sys/thyme_storage_layout.h"
 
 #define BLOCK           4096
 #define BUFFER          (4u << 20)              /* the loader's own buffer: one request a write */
-#define STORE_AT        2503475200LL            /* darwin's block 611200: past this port's iOS image */
-#define SLOT_BYTES      0x20000000LL            /* 512 MiB a slot, two slots in the 1.67 GiB left */
-#define SLOTS           2
+#define STORE_AT        THYME_STORE_AT
+#define SLOT_BYTES      THYME_STORE_SLOT_BYTES
+#define SLOTS           ((int)THYME_STORE_SLOTS)
 #define DEVICE          "/dev/rufs_darwin"
 #define ROOT            "/private/var"
 #define MAX_PATH        1024

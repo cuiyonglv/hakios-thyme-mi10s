@@ -9,11 +9,12 @@ import os
 from pathlib import Path
 import struct
 import tempfile
+from storage_layout import LEGACY_LAYOUT
 
 HEADER = 4096
 MAGIC = b'IOSSTOR1'
 PAYLOAD_MAX = 0x04000000
-STORE_AT = 611200 * 4096
+STORE_AT = LEGACY_LAYOUT['store_at']
 BOOT_LINE_LENGTH = 608
 CHUNK = 1024 * 1024
 DEFAULT_CMDLINE = (

@@ -31,7 +31,8 @@ import sys
 
 artifact = Path('loader.efi')
 sources = {name: hashlib.sha256(Path(name).read_bytes()).hexdigest()
-           for name in ('loader.c', 'efi.h', 'sha256.c', 'sha256.h', 'build.sh')}
+           for name in ('loader.c', 'efi.h', 'sha256.c', 'sha256.h', 'build.sh',
+                        '../kernel/bsd/sys/thyme_storage_layout.h')}
 revision = subprocess.run(['git', 'rev-parse', 'HEAD'], text=True, capture_output=True)
 dirty = subprocess.run(['git', 'status', '--porcelain', '--untracked-files=no'],
                        text=True, capture_output=True)

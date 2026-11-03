@@ -18,10 +18,11 @@ prefix = r'''
 #include <stdlib.h>
 #include <string.h>
 #include "sha256.h"
+#include "thyme_storage_layout.h"
 #define IOS_HEADER_BYTES 4096ULL
 #define IOS_STORAGE_MAGIC "IOSSTOR1"
 #define PAYLOAD_MAX_SIZE 0x04000000ULL
-#define BLOCK_WRITE_FIRST 611200ULL
+#define BLOCK_WRITE_FIRST THYME_STORE_FIRST_BLOCK
 #define BLOCK_BUFFER_SIZE (4u << 20)
 typedef uint64_t efi_status;
 #define EFI_ERROR(s) ((s) != 0)
@@ -121,5 +122,6 @@ with tempfile.TemporaryDirectory(prefix='thyme-image-reader-') as temporary:
     subprocess.run([os.environ.get('CC', 'cc'), '-std=gnu11', '-O1',
                     '-fsanitize=address,undefined', '-fno-omit-frame-pointer',
                     '-I', str(root / 'src/loader'), str(cfile),
+                    '-I', str(root / 'src/kernel/bsd/sys'),
                     str(root / 'src/loader/sha256.c'), '-o', str(binary)], check=True)
     subprocess.run([str(binary)], check=True, timeout=20)

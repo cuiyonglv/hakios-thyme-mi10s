@@ -22,8 +22,11 @@ class BuildRecordTests(unittest.TestCase):
         self.manifest = self.directory / 'loader.build.json'
         self.identity = self.directory / 'test-identity.h'
         self.identity.write_text('test fixture, no Apple/device data')
+        self.sources = self.directory / 'src/loader'
         for name in gate.SOURCES:
-            (self.directory / name).write_text('source fixture ' + name)
+            path = self.sources / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text('source fixture ' + name)
         data = bytearray(512)
         data[:2] = b'MZ'
         struct.pack_into('<I', data, 0x3c, 64)
@@ -38,13 +41,13 @@ class BuildRecordTests(unittest.TestCase):
                        'direct_storage_writes': False, 'target': 'aarch64-unknown-windows',
                        'image_base': '0xA1000000',
                        'artifact': {'bytes': len(data), 'sha256': hashlib.sha256(data).hexdigest()},
-                       'sources': {name: hashlib.sha256((self.directory / name).read_bytes()).hexdigest()
+                       'sources': {name: hashlib.sha256((self.sources / name).read_bytes()).hexdigest()
                                    for name in gate.SOURCES},
                        'identity_sha256': hashlib.sha256(self.identity.read_bytes()).hexdigest()}
 
     def check(self):
         self.manifest.write_text(json.dumps(self.record))
-        return gate.verify(self.artifact, self.manifest, self.directory, self.identity, self.revision)
+        return gate.verify(self.artifact, self.manifest, self.sources, self.identity, self.revision)
 
     def test_matching_record(self):
         self.assertEqual(self.check(), [])
@@ -60,7 +63,8 @@ class BuildRecordTests(unittest.TestCase):
             self.record[key] = old
 
     def test_replaced_artifact_source_or_identity_are_blocked(self):
-        for path in (self.artifact, self.directory / 'loader.c', self.identity):
+        for path in (self.artifact, self.sources / 'loader.c', self.identity,
+                     self.sources / '../kernel/bsd/sys/thyme_storage_layout.h'):
             old = path.read_bytes()
             path.write_bytes(old + b'changed')
             with self.subTest(path=path.name):

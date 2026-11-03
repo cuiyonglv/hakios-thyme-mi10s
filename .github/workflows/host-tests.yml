@@ -12,6 +12,8 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       - name: Image packer and atomic output
         run: python3 scripts/test-build-image.py
+      - name: Shared legacy storage contract
+        run: python3 scripts/test-storage-layout.py
       - name: Header and partition reader with sanitizers
         run: python3 scripts/test-loader-image.py
       - name: SHA-256 known answers and binary inputs

@@ -12,6 +12,7 @@
 #include "efi.h"
 #include "identity.h"         /* who iOS shall think we are: from the iPhone's own device tree (mkidentity.py) */
 #include "sha256.h"
+#include "../kernel/bsd/sys/thyme_storage_layout.h"
 
 #ifndef THYME_STORAGE_WRITES
 #define THYME_STORAGE_WRITES 0
@@ -1550,7 +1551,7 @@ ufs_survey(void)
  * and a write is refused before that block. The identity is the whole of darwin-write.py's: the
  * same partition, named the same, of the same size, in the same place, on logical unit 0.
  */
-#define BLOCK_WRITE_FIRST  611200ULL                   /* darwin's blocks of 4096: past this port's iOS image */
+#define BLOCK_WRITE_FIRST  THYME_STORE_FIRST_BLOCK
 #define BLOCK_DARWIN_FIRST 60831744ULL                  /* its first and last LBA of unit 0, as the GPT has them */
 #define BLOCK_DARWIN_LAST  61880314ULL
 #define BLOCK_DARWIN_TYPE  { 0x7c3457ef, 0x0000, 0x11aa, { 0xaa, 0x11, 0x00, 0x30, 0x65, 0x43, 0xec, 0xac } }
@@ -4132,7 +4133,7 @@ ios_header_valid(const struct ios_storage_header *hdr, uint64_t partition_bytes)
 {
 	uint64_t room;
 
-	if (memcmp(hdr->magic, IOS_STORAGE_MAGIC, 8) != 0 || hdr->version != 1 ||
+	if (memcmp(hdr->magic, IOS_STORAGE_MAGIC, 8) != 0 || hdr->version != THYME_LAYOUT_VERSION ||
 	    hdr->boot_mode > 1 || hdr->flags != 0 || hdr->part2_len != 0 ||
 	    hdr->part3_len != 0 || hdr->part1_len != hdr->system_len ||
 	    hdr->payload_len == 0 || hdr->payload_len > PAYLOAD_MAX_SIZE ||

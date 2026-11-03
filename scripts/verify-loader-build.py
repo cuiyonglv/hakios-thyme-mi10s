@@ -11,7 +11,8 @@ from pathlib import Path
 import re
 import struct
 
-SOURCES = {'loader.c', 'efi.h', 'sha256.c', 'sha256.h', 'build.sh'}
+SOURCES = {'loader.c', 'efi.h', 'sha256.c', 'sha256.h', 'build.sh',
+           '../kernel/bsd/sys/thyme_storage_layout.h'}
 
 
 def verify(artifact, manifest, source_dir, identity, revision):

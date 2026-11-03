@@ -11,8 +11,9 @@ import tempfile
 
 source = (Path(__file__).resolve().parents[1] / 'src/userland/var_store.c').read_text()
 definitions = source[source.index('#define BLOCK '):source.index('/* ---- the kernel\'s side')]
-definitions = definitions.replace('#define STORE_AT        2503475200LL', '#define STORE_AT        4096LL')
-definitions = definitions.replace('#define SLOT_BYTES      0x20000000LL', '#define SLOT_BYTES      0x100000LL')
+definitions = definitions.replace('#define STORE_AT        THYME_STORE_AT', '#define STORE_AT        4096LL')
+definitions = definitions.replace('#define SLOT_BYTES      THYME_STORE_SLOT_BYTES', '#define SLOT_BYTES      0x100000LL')
+definitions = definitions.replace('#define SLOTS           ((int)THYME_STORE_SLOTS)', '#define SLOTS           2')
 definitions = definitions.replace('#define BUFFER          (4u << 20)', '#define BUFFER          8192u')
 definitions = definitions.replace('#define ROOT            "/private/var"', '#define ROOT            "tree"')
 body = source[source.index('static uint32_t crc_table'):source.index('static void\nshow(void)')]
