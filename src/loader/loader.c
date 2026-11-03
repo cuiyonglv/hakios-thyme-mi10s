@@ -2501,11 +2501,17 @@ run_on_other_cpu(uint64_t mpidr, uint64_t entry, uint64_t boot_args_pa, const st
 #define VIRT_WDT_PET       0x86000007u
 #define VIRT_WDT_SET_TIME  0x86000008u
 #define WDT_BITE_MS        30000u
+#define QC_HYP_CALL_UID    0x8600ff01u
+#define QC_HYP_UID0        0x19bd54bdu
+#define QC_HYP_UID1        0x0b37571bu
+#define QC_HYP_UID2        0x946f609bu
+#define QC_HYP_UID3        0x54539de6u
 
 static const struct platform *PLAT;
 static int wdt_armed;
 
 static uint64_t smc_x3;             /* the fourth argument register, for the one call that has one */
+static uint64_t smc_result_x3;      /* UID discovery also returns a fourth word */
 
 static uint64_t
 smc_call(uint64_t id, uint64_t a1, uint64_t a2, uint64_t *r1, uint64_t *r2)
@@ -2523,6 +2529,7 @@ smc_call(uint64_t id, uint64_t a1, uint64_t a2, uint64_t *r1, uint64_t *r2)
 	if (r2 != NULL) {
 		*r2 = x2;
 	}
+	smc_result_x3 = x3;
 	return x0;
 }
 
@@ -2550,18 +2557,56 @@ wdt_set_ms(uint64_t ms)
 static void
 wdt_arm(void)
 {
+	static const efi_guid scm_guid = QCOM_SCM_GUID;
+	void *scm = NULL;
 	uint64_t ctl = 0, since = 0;
+	wdt_armed = 0;
 
-	if (PLAT != &platform_redwood) {
-		return; /* SMC is not routed anywhere useful on QEMU virt */
+	/* The thyme framebuffer uses the unknown-kona fallback, so pointer identity
+	 * is not a capability check. Probe only Qualcomm firmware exposing SCM;
+	 * a QEMU GOP must never turn into an unsupported SMC invocation. */
+	if (EFI_ERROR(BS->locate_protocol(&scm_guid, NULL, &scm)) || scm == NULL) {
+		print("watchdog: no Qualcomm SCM protocol; SMC probe skipped\n");
+		return;
+	}
+	/* Qualcomm SCM alone does not identify the hypervisor ABI. Use the standard
+	 * vendor UID query before invoking Haven-specific function numbers. */
+	uint64_t uid1 = 0, uid2 = 0;
+	uint64_t uid0 = smc_call(QC_HYP_CALL_UID, 0, 0, &uid1, &uid2);
+	uint64_t uid3 = smc_result_x3;
+	if (uid0 != QC_HYP_UID0 || uid1 != QC_HYP_UID1 || uid2 != QC_HYP_UID2 || uid3 != QC_HYP_UID3) {
+		print("watchdog: Qualcomm virtual ABI not identified, uid=%x %x %x %x\n", uid0, uid1, uid2, uid3);
+		return;
 	}
 	uint64_t st = smc_call(VIRT_WDT_STATUS, 0, 0, &ctl, &since);
+	if (st != 0) {
+		print("watchdog: virtual service unavailable, status ret=%x\n", st);
+		return;
+	}
 	uint64_t r_time = smc_call(VIRT_WDT_SET_TIME, WDT_BITE_MS, WDT_BITE_MS, NULL, NULL);
-	uint64_t r_ctl = smc_call(VIRT_WDT_CONTROL, 3, 0, NULL, NULL);
+	if (r_time != 0) {
+		print("watchdog: timeout configuration failed, ret=%x\n", r_time);
+		return;
+	}
+	/* Haven rejects redundant enable calls. STATUS bit 0 is the enable state;
+	 * CONTROL must retain reserved bit 1 (3 enables, 2 disables). */
+	int enabled_here = !(ctl & 1);
+	uint64_t r_ctl = enabled_here ? smc_call(VIRT_WDT_CONTROL, 3, 0, NULL, NULL) : 0;
+	if (r_ctl != 0) {
+		print("watchdog: enable failed, ret=%x\n", r_ctl);
+		return;
+	}
 	uint64_t r_pet = smc_call(VIRT_WDT_PET, 0, 0, NULL, NULL);
+	uint64_t after_ctl = 0;
+	uint64_t after = smc_call(VIRT_WDT_STATUS, 0, 0, &after_ctl, NULL);
 	print("watchdog: status ret=%x ctl=%x since_pet=%x; set_time=%x enable=%x pet=%x\n", st, ctl, since, r_time,
 	    r_ctl, r_pet);
-	wdt_armed = (r_pet == 0);
+	wdt_armed = (r_pet == 0 && after == 0 && (after_ctl & 1));
+	if (!wdt_armed && enabled_here) {
+		/* Do not leave a newly enabled, unverified watchdog running. */
+		smc_call(VIRT_WDT_CONTROL, 2, 0, NULL, NULL);
+	}
+	print("watchdog: verified armed=%d readback_ret=%x ctl=%x\n", (uint64_t)wdt_armed, after, after_ctl);
 }
 
 /* ------------------------------------------------------------------------ */
@@ -4000,8 +4045,12 @@ fb_command(char *cmd)
 				compose_logs(NULL, 0);
 			}
 		} else if (starts_with(cmd, "oem hang")) {
-			fb_reply("OKAY", "watchdog test: not petting any more");
-			for (;;) {
+			if (!wdt_armed) {
+				fb_reply("FAIL", "watchdog not armed; hang test refused");
+			} else {
+				fb_reply("OKAY", "watchdog test: not petting any more");
+				for (;;) {
+				}
 			}
 		} else if (starts_with(cmd, "oem memmap")) {
 			/* the firmware's memory map into the log (then "oem log" and fetch it) */
