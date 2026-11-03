@@ -20,6 +20,8 @@ jobs:
         run: python3 scripts/test-root-firmware.py
       - name: Bounded payloads, Mach-O loading and transfer publication
         run: python3 scripts/test-loader-payload.py
+      - name: Read-only phone backup copy and stability checks
+        run: python3 scripts/test-phone-backup.py
       - name: Image packer and atomic output
         run: python3 scripts/test-build-image.py
       - name: Shared legacy storage contract
