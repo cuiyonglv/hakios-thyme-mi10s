@@ -77,5 +77,20 @@ architectural timer over 20 ms. Rejected configuration or clock evidence causes
 disable/restore with a separate rollback readback result. Accepted trials leave
 USB responsive and do not pet the timer; the host can request a normal reset if
 expiry fails. Kernel launches and repeated trials are blocked while it runs.
-Host tests cover that policy with simulated registers. A phone expiry result is
-still required before this can be considered an unattended recovery mechanism.
+Host tests cover that policy with simulated registers.
+
+The phone expiry experiment with loader
+`b55b663dbdfc9c91c8319a8330eec90c3a45bccc` then passed: configuration readback
+matched, the sampled counter measured 32599 Hz, and the host issued no reset
+after starting the trial. Resident USB disappearance was observed at 13.063 s
+(including host polling/device-disconnect delays). Original Android slot B
+finished booting automatically with a new kernel boot ID. The firmware reported
+boot reason `bootloader`, which does not independently identify the reset cause.
+The evidence is the accepted physical configuration, advancing counter and
+automatic return without a host reboot; it is not a precise expiry-time trace.
+
+This verifies the explicit physical expiry experiment. Integration of periodic
+physical petting, timeout changes and kernel handoff remains necessary. In
+particular, the loader must not request XNU's virtual-SMC pet path when only a
+physical backend is active. No XNU hang or iOS persistence result follows from
+this experiment.
