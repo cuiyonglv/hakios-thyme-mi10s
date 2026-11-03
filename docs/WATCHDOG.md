@@ -39,3 +39,18 @@ Phone acceptance still requires readback from the new loader and, only after
 successful negotiation, a bounded expiry test that returns to the original
 Android build without a button press. Until that test passes, automatic recovery
 from a hung XNU kernel is unproven.
+
+## Thyme discovery result
+
+A second RAM-only phone session used loader revision
+`76bf72906df47921980fad055e0e62d420c5e139`. The resident log reported vendor UID
+`ffffffffffffffff 0 0 0`, which does not identify the required Qualcomm virtual
+ABI. The loader therefore stopped before Haven STATUS, timeout or CONTROL calls.
+USB initialization and a normal resident cold reset back to original Android
+slot B passed again. The read-only image included no XNU kernel.
+
+This establishes that the virtual watchdog path is unavailable in this tested
+firmware environment. No deliberate hang was requested, and no physical
+watchdog registers were changed. The next recovery work must examine the actual
+thyme physical-watchdog interface, with read-only register observations before
+configuration and a separate expiry test before relying on it.
