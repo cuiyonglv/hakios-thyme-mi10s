@@ -61,6 +61,7 @@
     }
   ],
   "missing_declarations": 131,
+  "with_existing_impl_candidate": 34,
   "missing_by_file": {
     "IOKit.exports": 89,
     "Libkern.exports": 2,
@@ -73,6 +74,7 @@
       "line": 1,
       "exported": "__ZN9IOService8CopyNameEPP8OSStringPFiP15OSMetaClassBase5IORPCE",
       "target": "__ZN9IOService8CopyNameEPP8OSStringPFiP15OSMetaClassBase5IORPCE",
+      "existing_impl_candidate": "__ZN9IOService13CopyName_ImplEPP8OSString",
       "demangled": "IOService::CopyName(OSString**, int (*)(OSMetaClassBase*, IORPC))",
       "likely_driverkit_rpc": true
     },
@@ -81,6 +83,7 @@
       "line": 5,
       "exported": "__ZN9IOService16StringFromReturnEiPP8OSStringPFiP15OSMetaClassBase5IORPCE",
       "target": "__ZN9IOService16StringFromReturnEiPP8OSStringPFiP15OSMetaClassBase5IORPCE",
+      "existing_impl_candidate": "__ZN9IOService21StringFromReturn_ImplEiPP8OSString",
       "demangled": "IOService::StringFromReturn(int, OSString**, int (*)(OSMetaClassBase*, IORPC))",
       "likely_driverkit_rpc": true
     },
@@ -89,6 +92,7 @@
       "line": 132,
       "exported": "__ZN11IOMemoryMap10_CopyStateEP24_IOMemoryMapPrivateStatePFiP15OSMetaClassBase5IORPCE",
       "target": "__ZN11IOMemoryMap10_CopyStateEP24_IOMemoryMapPrivateStatePFiP15OSMetaClassBase5IORPCE",
+      "existing_impl_candidate": "__ZN11IOMemoryMap15_CopyState_ImplEP24_IOMemoryMapPrivateState",
       "demangled": "IOMemoryMap::_CopyState(_IOMemoryMapPrivateState*, int (*)(OSMetaClassBase*, IORPC))",
       "likely_driverkit_rpc": true
     },
@@ -97,6 +101,7 @@
       "line": 134,
       "exported": "__ZN12IODMACommand13PrepareForDMAEyP18IOMemoryDescriptoryyPyPjP16IOAddressSegmentPFiP15OSMetaClassBase5IORPCE",
       "target": "__ZN12IODMACommand13PrepareForDMAEyP18IOMemoryDescriptoryyPyPjP16IOAddressSegmentPFiP15OSMetaClassBase5IORPCE",
+      "existing_impl_candidate": "__ZN12IODMACommand18PrepareForDMA_ImplEyP18IOMemoryDescriptoryyPyPjP16IOAddressSegment",
       "demangled": "IODMACommand::PrepareForDMA(unsigned long long, IOMemoryDescriptor*, unsigned long long, unsigned long long, unsigned long long*, unsigned int*, IOAddressSegment*, int (*)(OSMetaClassBase*, IORPC))",
       "likely_driverkit_rpc": true
     },
@@ -105,6 +110,7 @@
       "line": 135,
       "exported": "__ZN12IODMACommand14GetPreparationEPyS0_PP18IOMemoryDescriptorPFiP15OSMetaClassBase5IORPCE",
       "target": "__ZN12IODMACommand14GetPreparationEPyS0_PP18IOMemoryDescriptorPFiP15OSMetaClassBase5IORPCE",
+      "existing_impl_candidate": "__ZN12IODMACommand19GetPreparation_ImplEPyS0_PP18IOMemoryDescriptor",
       "demangled": "IODMACommand::GetPreparation(unsigned long long*, unsigned long long*, IOMemoryDescriptor**, int (*)(OSMetaClassBase*, IORPC))",
       "likely_driverkit_rpc": true
     },
@@ -113,6 +119,7 @@
       "line": 136,
       "exported": "__ZN12IODMACommand16PerformOperationEyyyyP18IOMemoryDescriptorPFiP15OSMetaClassBase5IORPCE",
       "target": "__ZN12IODMACommand16PerformOperationEyyyyP18IOMemoryDescriptorPFiP15OSMetaClassBase5IORPCE",
+      "existing_impl_candidate": "__ZN12IODMACommand21PerformOperation_ImplEyyyyP18IOMemoryDescriptor",
       "demangled": "IODMACommand::PerformOperation(unsigned long long, unsigned long long, unsigned long long, unsigned long long, IOMemoryDescriptor*, int (*)(OSMetaClassBase*, IORPC))",
       "likely_driverkit_rpc": true
     },
@@ -129,6 +136,7 @@
       "line": 140,
       "exported": "__ZN12IOUserClient32CreateMemoryDescriptorFromClientEyjPK16IOAddressSegmentPP18IOMemoryDescriptorPFiP15OSMetaClassBase5IORPCE",
       "target": "__ZN12IOUserClient32CreateMemoryDescriptorFromClientEyjPK16IOAddressSegmentPP18IOMemoryDescriptorPFiP15OSMetaClassBase5IORPCE",
+      "existing_impl_candidate": "__ZN12IOUserClient37CreateMemoryDescriptorFromClient_ImplEyjPK16IOAddressSegmentPP18IOMemoryDescriptor",
       "demangled": "IOUserClient::CreateMemoryDescriptorFromClient(unsigned long long, unsigned int, IOAddressSegment const*, IOMemoryDescriptor**, int (*)(OSMetaClassBase*, IORPC))",
       "likely_driverkit_rpc": true
     },
@@ -137,6 +145,7 @@
       "line": 143,
       "exported": "__ZN15IODispatchQueue7SetPortEP8ipc_portPFiP15OSMetaClassBase5IORPCE",
       "target": "__ZN15IODispatchQueue7SetPortEP8ipc_portPFiP15OSMetaClassBase5IORPCE",
+      "existing_impl_candidate": "__ZN15IODispatchQueue12SetPort_ImplEP8ipc_port",
       "demangled": "IODispatchQueue::SetPort(ipc_port*, int (*)(OSMetaClassBase*, IORPC))",
       "likely_driverkit_rpc": true
     },
@@ -161,6 +170,7 @@
       "line": 146,
       "exported": "__ZN18IOMemoryDescriptor10_CopyStateEP17_IOMDPrivateStatePFiP15OSMetaClassBase5IORPCE",
       "target": "__ZN18IOMemoryDescriptor10_CopyStateEP17_IOMDPrivateStatePFiP15OSMetaClassBase5IORPCE",
+      "existing_impl_candidate": "__ZN18IOMemoryDescriptor15_CopyState_ImplEP17_IOMDPrivateState",
       "demangled": "IOMemoryDescriptor::_CopyState(_IOMDPrivateState*, int (*)(OSMetaClassBase*, IORPC))",
       "likely_driverkit_rpc": true
     },
@@ -169,6 +179,7 @@
       "line": 147,
       "exported": "__ZN18IOMemoryDescriptor13CreateMappingEyyyyyPP11IOMemoryMapPFiP15OSMetaClassBase5IORPCE",
       "target": "__ZN18IOMemoryDescriptor13CreateMappingEyyyyyPP11IOMemoryMapPFiP15OSMetaClassBase5IORPCE",
+      "existing_impl_candidate": "__ZN18IOMemoryDescriptor18CreateMapping_ImplEyyyyyPP11IOMemoryMap",
       "demangled": "IOMemoryDescriptor::CreateMapping(unsigned long long, unsigned long long, unsigned long long, unsigned long long, unsigned long long, IOMemoryMap**, int (*)(OSMetaClassBase*, IORPC))",
       "likely_driverkit_rpc": true
     },
@@ -177,6 +188,7 @@
       "line": 148,
       "exported": "__ZN24IOBufferMemoryDescriptor9SetLengthEyPFiP15OSMetaClassBase5IORPCE",
       "target": "__ZN24IOBufferMemoryDescriptor9SetLengthEyPFiP15OSMetaClassBase5IORPCE",
+      "existing_impl_candidate": "__ZN24IOBufferMemoryDescriptor14SetLength_ImplEy",
       "demangled": "IOBufferMemoryDescriptor::SetLength(unsigned long long, int (*)(OSMetaClassBase*, IORPC))",
       "likely_driverkit_rpc": true
     },
@@ -185,6 +197,7 @@
       "line": 149,
       "exported": "__ZN35IOServiceNotificationDispatchSource10SetHandlerEP8OSActionPFiP15OSMetaClassBase5IORPCE",
       "target": "__ZN35IOServiceNotificationDispatchSource10SetHandlerEP8OSActionPFiP15OSMetaClassBase5IORPCE",
+      "existing_impl_candidate": "__ZN35IOServiceNotificationDispatchSource15SetHandler_ImplEP8OSAction",
       "demangled": "IOServiceNotificationDispatchSource::SetHandler(OSAction*, int (*)(OSMetaClassBase*, IORPC))",
       "likely_driverkit_rpc": true
     },
@@ -193,6 +206,7 @@
       "line": 150,
       "exported": "__ZN35IOServiceNotificationDispatchSource20CopyNextNotificationEPyPP9IOServiceS0_PFiP15OSMetaClassBase5IORPCE",
       "target": "__ZN35IOServiceNotificationDispatchSource20CopyNextNotificationEPyPP9IOServiceS0_PFiP15OSMetaClassBase5IORPCE",
+      "existing_impl_candidate": "__ZN35IOServiceNotificationDispatchSource25CopyNextNotification_ImplEPyPP9IOServiceS0_",
       "demangled": "IOServiceNotificationDispatchSource::CopyNextNotification(unsigned long long*, IOService**, unsigned long long*, int (*)(OSMetaClassBase*, IORPC))",
       "likely_driverkit_rpc": true
     },
@@ -209,6 +223,7 @@
       "line": 156,
       "exported": "__ZN9IOService13NewUserClientEjPP12IOUserClientPFiP15OSMetaClassBase5IORPCE",
       "target": "__ZN9IOService13NewUserClientEjPP12IOUserClientPFiP15OSMetaClassBase5IORPCE",
+      "existing_impl_candidate": "__ZN9IOService18NewUserClient_ImplEjPP12IOUserClient",
       "demangled": "IOService::NewUserClient(unsigned int, IOUserClient**, int (*)(OSMetaClassBase*, IORPC))",
       "likely_driverkit_rpc": true
     },
@@ -217,6 +232,7 @@
       "line": 158,
       "exported": "__ZN9IOService13SetPropertiesEP12OSDictionaryPFiP15OSMetaClassBase5IORPCE",
       "target": "__ZN9IOService13SetPropertiesEP12OSDictionaryPFiP15OSMetaClassBase5IORPCE",
+      "existing_impl_candidate": "__ZN9IOService18SetProperties_ImplEP12OSDictionary",
       "demangled": "IOService::SetProperties(OSDictionary*, int (*)(OSMetaClassBase*, IORPC))",
       "likely_driverkit_rpc": true
     },
@@ -225,6 +241,7 @@
       "line": 159,
       "exported": "__ZN9IOService14CopyPropertiesEPP12OSDictionaryPFiP15OSMetaClassBase5IORPCE",
       "target": "__ZN9IOService14CopyPropertiesEPP12OSDictionaryPFiP15OSMetaClassBase5IORPCE",
+      "existing_impl_candidate": "__ZN9IOService19CopyProperties_ImplEPP12OSDictionary",
       "demangled": "IOService::CopyProperties(OSDictionary**, int (*)(OSMetaClassBase*, IORPC))",
       "likely_driverkit_rpc": true
     },
@@ -233,6 +250,7 @@
       "line": 160,
       "exported": "__ZN9IOService14SearchPropertyEPKcS1_yPP8OSObjectPFiP15OSMetaClassBase5IORPCE",
       "target": "__ZN9IOService14SearchPropertyEPKcS1_yPP8OSObjectPFiP15OSMetaClassBase5IORPCE",
+      "existing_impl_candidate": "__ZN9IOService19SearchProperty_ImplEPKcS1_yPP8OSObject",
       "demangled": "IOService::SearchProperty(char const*, char const*, unsigned long long, OSObject**, int (*)(OSMetaClassBase*, IORPC))",
       "likely_driverkit_rpc": true
     },
@@ -241,6 +259,7 @@
       "line": 161,
       "exported": "__ZN9IOService15RegisterServiceEPFiP15OSMetaClassBase5IORPCE",
       "target": "__ZN9IOService15RegisterServiceEPFiP15OSMetaClassBase5IORPCE",
+      "existing_impl_candidate": "__ZN9IOService20RegisterService_ImplEv",
       "demangled": "IOService::RegisterService(int (*)(OSMetaClassBase*, IORPC))",
       "likely_driverkit_rpc": true
     },
@@ -249,6 +268,7 @@
       "line": 162,
       "exported": "__ZN9IOService16ChangePowerStateEjPFiP15OSMetaClassBase5IORPCE",
       "target": "__ZN9IOService16ChangePowerStateEjPFiP15OSMetaClassBase5IORPCE",
+      "existing_impl_candidate": "__ZN9IOService21ChangePowerState_ImplEj",
       "demangled": "IOService::ChangePowerState(unsigned int, int (*)(OSMetaClassBase*, IORPC))",
       "likely_driverkit_rpc": true
     },
@@ -257,6 +277,7 @@
       "line": 163,
       "exported": "__ZN9IOService18GetRegistryEntryIDEPyPFiP15OSMetaClassBase5IORPCE",
       "target": "__ZN9IOService18GetRegistryEntryIDEPyPFiP15OSMetaClassBase5IORPCE",
+      "existing_impl_candidate": "__ZN9IOService23GetRegistryEntryID_ImplEPy",
       "demangled": "IOService::GetRegistryEntryID(unsigned long long*, int (*)(OSMetaClassBase*, IORPC))",
       "likely_driverkit_rpc": true
     },
@@ -265,6 +286,7 @@
       "line": 164,
       "exported": "__ZN9IOService18RequireMaxBusStallEyPFiP15OSMetaClassBase5IORPCE",
       "target": "__ZN9IOService18RequireMaxBusStallEyPFiP15OSMetaClassBase5IORPCE",
+      "existing_impl_candidate": "__ZN9IOService23RequireMaxBusStall_ImplEy",
       "demangled": "IOService::RequireMaxBusStall(unsigned long long, int (*)(OSMetaClassBase*, IORPC))",
       "likely_driverkit_rpc": true
     },
@@ -273,6 +295,7 @@
       "line": 165,
       "exported": "__ZN9IOService22CopyProviderPropertiesEP7OSArrayPS1_PFiP15OSMetaClassBase5IORPCE",
       "target": "__ZN9IOService22CopyProviderPropertiesEP7OSArrayPS1_PFiP15OSMetaClassBase5IORPCE",
+      "existing_impl_candidate": "__ZN9IOService27CopyProviderProperties_ImplEP7OSArrayPS1_",
       "demangled": "IOService::CopyProviderProperties(OSArray*, OSArray**, int (*)(OSMetaClassBase*, IORPC))",
       "likely_driverkit_rpc": true
     },
@@ -281,6 +304,7 @@
       "line": 167,
       "exported": "__ZN9IOService6CreateEPS_PKcPS0_PFiP15OSMetaClassBase5IORPCE",
       "target": "__ZN9IOService6CreateEPS_PKcPS0_PFiP15OSMetaClassBase5IORPCE",
+      "existing_impl_candidate": "__ZN9IOService11Create_ImplEPS_PKcPS0_",
       "demangled": "IOService::Create(IOService*, char const*, IOService**, int (*)(OSMetaClassBase*, IORPC))",
       "likely_driverkit_rpc": true
     },
@@ -289,6 +313,7 @@
       "line": 168,
       "exported": "__ZN9IOService7SetNameEPKcPFiP15OSMetaClassBase5IORPCE",
       "target": "__ZN9IOService7SetNameEPKcPFiP15OSMetaClassBase5IORPCE",
+      "existing_impl_candidate": "__ZN9IOService12SetName_ImplEPKc",
       "demangled": "IOService::SetName(char const*, int (*)(OSMetaClassBase*, IORPC))",
       "likely_driverkit_rpc": true
     },
@@ -297,6 +322,7 @@
       "line": 169,
       "exported": "__ZN9IOService9TerminateEyPFiP15OSMetaClassBase5IORPCE",
       "target": "__ZN9IOService9TerminateEyPFiP15OSMetaClassBase5IORPCE",
+      "existing_impl_candidate": "__ZN9IOService14Terminate_ImplEy",
       "demangled": "IOService::Terminate(unsigned long long, int (*)(OSMetaClassBase*, IORPC))",
       "likely_driverkit_rpc": true
     },
@@ -305,6 +331,7 @@
       "line": 171,
       "exported": "__ZN9IOService14RemovePropertyEP8OSStringPFiP15OSMetaClassBase5IORPCE",
       "target": "__ZN9IOService14RemovePropertyEP8OSStringPFiP15OSMetaClassBase5IORPCE",
+      "existing_impl_candidate": "__ZN9IOService19RemoveProperty_ImplEP8OSString",
       "demangled": "IOService::RemoveProperty(OSString*, int (*)(OSMetaClassBase*, IORPC))",
       "likely_driverkit_rpc": true
     },
@@ -321,6 +348,7 @@
       "line": 177,
       "exported": "__ZN9IOService12GetBusyStateEPjPFiP15OSMetaClassBase5IORPCE",
       "target": "__ZN9IOService12GetBusyStateEPjPFiP15OSMetaClassBase5IORPCE",
+      "existing_impl_candidate": "__ZN9IOService17GetBusyState_ImplEPj",
       "demangled": "IOService::GetBusyState(unsigned int*, int (*)(OSMetaClassBase*, IORPC))",
       "likely_driverkit_rpc": true
     },
@@ -329,6 +357,7 @@
       "line": 178,
       "exported": "__ZN9IOService10AdjustBusyEiPFiP15OSMetaClassBase5IORPCE",
       "target": "__ZN9IOService10AdjustBusyEiPFiP15OSMetaClassBase5IORPCE",
+      "existing_impl_candidate": "__ZN9IOService15AdjustBusy_ImplEi",
       "demangled": "IOService::AdjustBusy(int, int (*)(OSMetaClassBase*, IORPC))",
       "likely_driverkit_rpc": true
     },
@@ -337,6 +366,7 @@
       "line": 179,
       "exported": "__ZN9IOService34CopySystemStateNotificationServiceEPPS_PFiP15OSMetaClassBase5IORPCE",
       "target": "__ZN9IOService34CopySystemStateNotificationServiceEPPS_PFiP15OSMetaClassBase5IORPCE",
+      "existing_impl_candidate": "__ZN9IOService39CopySystemStateNotificationService_ImplEPPS_",
       "demangled": "IOService::CopySystemStateNotificationService(IOService**, int (*)(OSMetaClassBase*, IORPC))",
       "likely_driverkit_rpc": true
     },
@@ -457,6 +487,7 @@
       "line": 824,
       "exported": "__ZN16IODispatchSource9SetEnableEbPFiP15OSMetaClassBase5IORPCE",
       "target": "__ZN16IODispatchSource9SetEnableEbPFiP15OSMetaClassBase5IORPCE",
+      "existing_impl_candidate": "__ZN16IODispatchSource14SetEnable_ImplEb",
       "demangled": "IODispatchSource::SetEnable(bool, int (*)(OSMetaClassBase*, IORPC))",
       "likely_driverkit_rpc": true
     },
@@ -497,6 +528,7 @@
       "line": 1244,
       "exported": "__ZN25IODataQueueDispatchSource10CopyMemoryEPP18IOMemoryDescriptorPFiP15OSMetaClassBase5IORPCE",
       "target": "__ZN25IODataQueueDispatchSource10CopyMemoryEPP18IOMemoryDescriptorPFiP15OSMetaClassBase5IORPCE",
+      "existing_impl_candidate": "__ZN25IODataQueueDispatchSource15CopyMemory_ImplEPP18IOMemoryDescriptor",
       "demangled": "IODataQueueDispatchSource::CopyMemory(IOMemoryDescriptor**, int (*)(OSMetaClassBase*, IORPC))",
       "likely_driverkit_rpc": true
     },
@@ -553,6 +585,7 @@
       "line": 1262,
       "exported": "__ZN25IODataQueueDispatchSource22SetDataServicedHandlerEP8OSActionPFiP15OSMetaClassBase5IORPCE",
       "target": "__ZN25IODataQueueDispatchSource22SetDataServicedHandlerEP8OSActionPFiP15OSMetaClassBase5IORPCE",
+      "existing_impl_candidate": "__ZN25IODataQueueDispatchSource27SetDataServicedHandler_ImplEP8OSAction",
       "demangled": "IODataQueueDispatchSource::SetDataServicedHandler(OSAction*, int (*)(OSMetaClassBase*, IORPC))",
       "likely_driverkit_rpc": true
     },
@@ -561,6 +594,7 @@
       "line": 1264,
       "exported": "__ZN25IODataQueueDispatchSource23SetDataAvailableHandlerEP8OSActionPFiP15OSMetaClassBase5IORPCE",
       "target": "__ZN25IODataQueueDispatchSource23SetDataAvailableHandlerEP8OSActionPFiP15OSMetaClassBase5IORPCE",
+      "existing_impl_candidate": "__ZN25IODataQueueDispatchSource28SetDataAvailableHandler_ImplEP8OSAction",
       "demangled": "IODataQueueDispatchSource::SetDataAvailableHandler(OSAction*, int (*)(OSMetaClassBase*, IORPC))",
       "likely_driverkit_rpc": true
     },
@@ -777,6 +811,7 @@
       "line": 1998,
       "exported": "__ZN9IOService22CoreAnalyticsSendEventEyP8OSStringP12OSDictionaryPFiP15OSMetaClassBase5IORPCE",
       "target": "__ZN9IOService22CoreAnalyticsSendEventEyP8OSStringP12OSDictionaryPFiP15OSMetaClassBase5IORPCE",
+      "existing_impl_candidate": "__ZN9IOService27CoreAnalyticsSendEvent_ImplEyP8OSStringP12OSDictionary",
       "demangled": "IOService::CoreAnalyticsSendEvent(unsigned long long, OSString*, OSDictionary*, int (*)(OSMetaClassBase*, IORPC))",
       "likely_driverkit_rpc": true
     },

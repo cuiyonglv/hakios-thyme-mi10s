@@ -10,8 +10,33 @@ from collections import Counter
 import hashlib
 import json
 from pathlib import Path
+import re
 import shutil
 import subprocess
+
+
+def implementation_candidate(symbol):
+    """Recognize simple IIG wrappers with one trailing supermethod argument.
+
+    This is a source-review candidate only, following the upstream
+    xnu-deps/gen-iig-stubs.py convention; no code or stubs are generated.
+    """
+    tail = 'PFiP15OSMetaClassBase5IORPCE'
+    first = re.match(r'__ZN(\d+)', symbol)
+    if not first or not symbol.endswith(tail):
+        return None
+    position = first.end() + int(first.group(1))
+    method_length = re.match(r'(\d+)', symbol[position:])
+    if not method_length:
+        return None
+    begin = position + method_length.end()
+    length = int(method_length.group(1))
+    method = symbol[begin:begin + length]
+    parameters = symbol[begin + length:]
+    if len(method) != length or not parameters.startswith('E'):
+        return None
+    arguments = parameters[1:-len(tail)] or 'v'
+    return f'{symbol[:position]}{length + 5}{method}_ImplE{arguments}'
 
 
 def audit(symbol_path, export_paths):
@@ -45,8 +70,11 @@ def audit(symbol_path, export_paths):
             matched = (any(symbol.startswith(target[:-1]) for symbol in defined)
                        if target.endswith('*') else target in defined)
             if not matched:
-                missing.append({'file': path.name, 'line': number,
-                                'exported': exported, 'target': target})
+                item = {'file': path.name, 'line': number, 'exported': exported, 'target': target}
+                candidate = implementation_candidate(target)
+                if candidate and candidate in defined:
+                    item['existing_impl_candidate'] = candidate
+                missing.append(item)
     if not checked:
         raise ValueError('no export declarations were supplied')
     demangler = shutil.which('c++filt')
@@ -60,6 +88,7 @@ def audit(symbol_path, export_paths):
             'symbol_file_sha256': hashlib.sha256(symbol_data).hexdigest(),
             'export_files': export_files,
             'missing_declarations': len(missing),
+            'with_existing_impl_candidate': sum('existing_impl_candidate' in item for item in missing),
             'missing_by_file': dict(sorted(Counter(item['file'] for item in missing).items())),
             'missing': missing}
 

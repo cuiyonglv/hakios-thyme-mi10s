@@ -22,6 +22,11 @@ Private.arm64 35。其中91项的解码名称涉及IORPC/Invoke/Dispatch；这�
 [原始清单与输入哈希](reports/kernel-exports.json)保留了每条声明的位置和解码结果。
 规则来源为[同版本XNU的kextsymboltool](https://github.com/apple-oss-distributions/xnu/blob/c54f35ca767986246321eb901baf8f5ff7923f6a/SETUP/kextsymboltool/kextsymboltool.c)。
 
+进一步分类发现34项缺失包装能在已定义符号中找到相应`_Impl`，例如
+`IOService::CopyName_Impl`、`StringFromReturn_Impl`与`IOMemoryMap::_CopyState_Impl`。
+它们只是候选对应关系，尚须核对函数签名、supermethod/RPC语义和调用方；
+审计仍把缺失包装算作缺失，不将候选关系算为实现成功。
+
 下一项具体工作：核对IIG生成代码与真实`_Impl`实现，分清DriverKit包装缺口和
 Apple平台专用接口，不把`kIOReturnUnsupported`空桩当作已经实现功能。
 审计工具为`scripts/audit-kernel-exports.py`，发现缺失时退出非零，不修改导出表。

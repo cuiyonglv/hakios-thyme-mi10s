@@ -41,6 +41,18 @@ class AuditTests(unittest.TestCase):
         self.assertEqual(report['missing_declarations'], 1)
         self.assertEqual(report['missing'][0]['target'], '_missing*')
 
+    def test_existing_impl_is_reported_as_candidate_not_implemented_wrapper(self):
+        wrapper = '__ZN9IOService8CopyNameEPP8OSStringPFiP15OSMetaClassBase5IORPCE'
+        implementation = '__ZN9IOService13CopyName_ImplEPP8OSString'
+        self.symbols.write_text(implementation + '\n')
+        self.exports.write_text(wrapper + '\n')
+        report = audit.audit(self.symbols, [self.exports])
+        self.assertEqual(report['missing_declarations'], 1)
+        self.assertEqual(report['with_existing_impl_candidate'], 1)
+        self.assertEqual(report['missing'][0]['existing_impl_candidate'], implementation)
+        self.symbols.write_text('_other\n')
+        self.assertEqual(audit.audit(self.symbols, [self.exports])['with_existing_impl_candidate'], 0)
+
     def test_empty_or_wrong_nm_format_is_not_success(self):
         self.exports.write_text('_present\n')
         for contents in ('', '00000000 T _present\n'):
