@@ -149,6 +149,12 @@ Apple平台专用接口，不把`kIOReturnUnsupported`空桩当作已经实现�
   适配`JopangJovan/hackios-xnu-kernel-umi`提交`77fa050f34ec73c9d5dd8ee1025f82c32202a79a`
   的`userland/src/init.c`，其它版本拒绝自动应用；输入原文件不修改。
   主机故障注入测试及生成后arm64 iOS16.5交叉编译/链接通过，尚未打入可验收手机镜像。
+- `scripts/build-guarded-userland.py`现可将这份init与当前`var_store.c`一起编译，
+  固定外部init及libmini三个源文件哈希，拒绝未知输入与覆盖已有输出目录。
+  所有编译/链接先在临时目录完成，输入前后哈希一致后才发布新目录及`build.json`；
+  记录提交、脏状态、编译参数、输入和产物哈希。示例：
+  `python3 scripts/build-guarded-userland.py --init <外部init.c> --mini-dir <外部libmini目录> --clang clang-18 --ld64 <cctools的ld> --out-dir <全新本地目录>`。
+  已实际交叉链接两个程序；尚须将它们集成到版本/布局匹配的镜像，再验证实机恢复。
 
 - 已有多项源码修复、可链接内核及通过的主机回归；尚无本机验收合格的安装镜像。
 - 充电、真实联网、音频、GPU/触摸稳定性、重启恢复均未在本机移植系统下验收。

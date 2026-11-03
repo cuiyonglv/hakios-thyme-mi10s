@@ -118,4 +118,8 @@ with tempfile.TemporaryDirectory(prefix='thyme-restore-guard-') as temporary:
     result = subprocess.run(['python3', str(root / 'scripts/prepare-init.py'),
                              '--init', str(bad), '--out', str(bad)], capture_output=True)
     assert result.returncode != 0 and bad.read_text() == fixture
+    result = subprocess.run(['python3', str(root / 'scripts/build-guarded-userland.py'),
+                             '--init', str(bad), '--mini-dir', str(directory),
+                             '--ld64', 'unavailable-linker', '--out-dir', str(directory)], capture_output=True)
+    assert result.returncode != 0 and out.read_text() == 'preserve existing output'
 print('PASS: source pin rejects unknown revisions; invalid input preserves output and cannot overwrite input')
