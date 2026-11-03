@@ -26,6 +26,8 @@ jobs:
         run: python3 scripts/test-loader-watchdog.py
       - name: Physical watchdog expiry-trial guards and rollback
         run: python3 scripts/test-physical-watchdog.py
+      - name: Watchdog servicing during continuous USB completions
+        run: python3 scripts/test-usb-watchdog.py
       - name: Read-only phone backup copy and stability checks
         run: python3 scripts/test-phone-backup.py
       - name: Backup GPT CRCs and partition identity mapping

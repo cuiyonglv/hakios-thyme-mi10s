@@ -921,6 +921,11 @@ __asm__ (
         );
 
 static uint64_t smc_call(uint64_t id, uint64_t a1, uint64_t a2, uint64_t *r1, uint64_t *r2);
+static int wdt_physical;
+static uint32_t wdt_physical_ms;
+static void wdt_physical_pet(void);
+static int wdt_physical_timeout(uint64_t ms);
+
 static uint64_t smc_x3;
 static const struct platform *PLAT;
 static void clean_dcache(uint64_t start, uint64_t end);
@@ -2536,15 +2541,18 @@ smc_call(uint64_t id, uint64_t a1, uint64_t a2, uint64_t *r1, uint64_t *r2)
 static void
 wdt_pet(void)
 {
-	if (wdt_armed) {
+	if (wdt_armed && wdt_physical) {
+		wdt_physical_pet();
+	} else if (wdt_armed) {
 		smc_call(VIRT_WDT_PET, 0, 0, NULL, NULL);
 	}
 }
 
 /* Change the time to the bite, and start counting again. The hypervisor takes 16 bits of milliseconds. */
-static void
+static int
 wdt_set_ms(uint64_t ms)
 {
+	if (wdt_armed && wdt_physical) return wdt_physical_timeout(ms);
 	if (ms > 65000) {
 		ms = 65000;
 	}
@@ -2552,6 +2560,7 @@ wdt_set_ms(uint64_t ms)
 		smc_call(VIRT_WDT_SET_TIME, ms, ms, NULL, NULL);
 		smc_call(VIRT_WDT_PET, 0, 0, NULL, NULL);
 	}
+	return 1;
 }
 
 static void
@@ -2988,16 +2997,16 @@ wdt_thyme_snapshot(void)
 	return 1;
 }
 
-/* An explicit expiry experiment, not a kernel watchdog backend. Keep USB alive
- * so the host can cold-reset if expiry does not occur. Nothing pets this trial. */
+/* Shared physical configuration gate. An expiry trial keeps USB responsive
+ * without petting; periodic mode uses the dedicated loader-core pet path. */
 static int
-wdt_thyme_expiry_trial(void)
+wdt_thyme_start(uint32_t seconds, int periodic)
 {
-	if (wdt_trial_pending || wdt_armed || !wdt_thyme_profile()) return 0;
+	if ((seconds != 8 && seconds != 12) || wdt_trial_pending || wdt_armed || !wdt_thyme_profile()) return 0;
 	uint32_t old_enable = wdt_thyme_read(THYME_WDT_ENABLE);
 	uint32_t old_bark = wdt_thyme_read(THYME_WDT_BARK);
 	uint32_t old_bite = wdt_thyme_read(THYME_WDT_BITE);
-	uint32_t bite = THYME_WDT_HZ * THYME_WDT_TRIAL_SECONDS;
+	uint32_t bite = THYME_WDT_HZ * seconds;
 	uint64_t frequency = READ_SYSREG(CNTFRQ_EL0);
 	if (old_enable != 0 || old_bark > THYME_WDT_MASK || old_bite > THYME_WDT_MASK ||
 	    old_bark <= bite || frequency == 0) {
@@ -3026,9 +3035,44 @@ wdt_thyme_expiry_trial(void)
 		print("watchdog physical trial: verification failed, rate=%d rollback_verified=%d\n", rate, (uint64_t)restored);
 		return 0;
 	}
-	wdt_trial_pending = 1;
-	print("watchdog physical trial: enabled seconds=%d bite=%x bark=%x measured_hz=%d; USB alive, no pet\n",
-	    (uint64_t)THYME_WDT_TRIAL_SECONDS, (uint64_t)bite, (uint64_t)old_bark, rate);
+	wdt_trial_pending = !periodic;
+	if (periodic) { wdt_physical = 1; wdt_armed = 1; wdt_physical_ms = seconds * 1000; }
+	print("watchdog physical trial: enabled seconds=%d bite=%x bark=%x measured_hz=%d; %s\n",
+	    (uint64_t)seconds, (uint64_t)bite, (uint64_t)old_bark, rate,
+	    periodic ? "periodic pet enabled" : "USB alive, no pet");
+	return 1;
+}
+
+static int
+wdt_thyme_expiry_trial(void)
+{
+	return wdt_thyme_start(THYME_WDT_TRIAL_SECONDS, 0);
+}
+
+static void
+wdt_physical_pet(void)
+{
+	wdt_thyme_write(THYME_WDT_RESET, 1);
+}
+
+static int
+wdt_physical_timeout(uint64_t ms)
+{
+	if (ms < 1000) ms = 1000;
+	if (ms > 12000) ms = 12000;
+	uint32_t ticks = (uint32_t)(ms * THYME_WDT_HZ / 1000);
+	uint32_t old = wdt_thyme_read(THYME_WDT_BITE);
+	if (wdt_thyme_read(THYME_WDT_ENABLE) != 1 || wdt_thyme_read(THYME_WDT_BARK) <= ticks) return 0;
+	wdt_physical_pet();
+	wdt_thyme_write(THYME_WDT_BITE, ticks);
+	wdt_physical_pet();
+	if (wdt_thyme_read(THYME_WDT_BITE) != ticks) {
+		wdt_thyme_write(THYME_WDT_BITE, old);
+		wdt_physical_pet();
+		print("watchdog physical: timeout update rejected\n");
+		return 0;
+	}
+	wdt_physical_ms = (uint32_t)ms;
 	return 1;
 }
 
@@ -3268,6 +3312,10 @@ run_kernel(int have_checkpoint, uint64_t checkpoint)
 	if (!THYME_STORAGE_WRITES || !thyme_store_info_valid(&run_storage)) {
 		block_write_requested = 0;
 	}
+	if (wdt_physical && kernel_mpidr == this_mpidr && checkpoint != CHECKPOINT_SELFTEST) {
+		print("physical watchdog requires a dedicated loader core; refusing same-core kernel\n");
+		return 0;
+	}
 	if (battery_requested) {
 		charger_start();
 	}
@@ -3377,7 +3425,7 @@ run_kernel(int have_checkpoint, uint64_t checkpoint)
 			ba->commandLine[n++] = *c;
 		}
 	}
-	if (wdt_armed) {
+	if (wdt_armed && !wdt_physical) {
 		for (const char *c = "hv_wdt_pet=1 "; *c && n < BOOT_LINE_LENGTH - 1; c++) {
 			ba->commandLine[n++] = *c;
 		}
@@ -3663,7 +3711,10 @@ run_kernel(int have_checkpoint, uint64_t checkpoint)
 	print("jumping to %x\n", entry_va + slide);
 	flush_log();
 	/* From here on the kernel feeds the watchdog (boot-arg hv_wdt_pet, see loader_return.c in XNU). */
-	wdt_set_ms(60000);
+	if (!wdt_set_ms(60000)) {
+		print("watchdog timeout could not be verified; kernel handoff refused\n");
+		return 0;
+	}
 
 	/* --- hand off (UEFI is left resident, see loader_save_ctx) ------------ */
 	if (loader_save_ctx() == 0) {
@@ -3893,7 +3944,7 @@ usb_start(void)
 /*
  * Pump controller events until a transfer on `endpoint` finishes.
  * Returns the byte count, or -1 if the transfer was cancelled or the cable
- * state changed. Keeps the watchdog fed while idle.
+ * state changed. Feeds the watchdog before returning completed transfers too.
  */
 static int64_t
 usb_wait(uint8_t endpoint)
@@ -3908,6 +3959,10 @@ usb_wait(uint8_t endpoint)
 		usb_device_event_data data;
 
 		USB->handle_event(&msg, &size, &data);
+		if (READ_SYSREG(CNTVCT_EL0) - last_pet > freq) {
+			last_pet = READ_SYSREG(CNTVCT_EL0);
+			wdt_pet();
+		}
 		if (msg == UsbDeviceEventDeviceStateChange) {
 			usb_connected = (data.device_state == UsbDeviceStateConnected);
 			return -1;
@@ -3918,10 +3973,6 @@ usb_wait(uint8_t endpoint)
 		}
 		if (msg == UsbDeviceEventTransferNotification && data.transfer.endpoint_index == endpoint) {
 			return data.transfer.status == UsbDeviceTransferStatusCompleteOK ? (int64_t)data.transfer.bytes_completed : -1;
-		}
-		if (READ_SYSREG(CNTVCT_EL0) - last_pet > freq) {
-			last_pet = READ_SYSREG(CNTVCT_EL0);
-			wdt_pet();
 		}
 	}
 }
@@ -4017,7 +4068,7 @@ fb_command(char *cmd)
 		if ((busy || wdt_trial_pending) && (starts_with(cmd, "oem ramdisk") || starts_with(cmd, "download:") || starts_with(cmd, "oem run") ||
 		    starts_with(cmd, "oem selftest") || starts_with(cmd, "oem hang") || starts_with(cmd, "oem recording") ||
 		    starts_with(cmd, "oem sound") || starts_with(cmd, "oem clearscreen") || starts_with(cmd, "oem memmap") ||
-		    starts_with(cmd, "oem thyme-wdt-read") || starts_with(cmd, "oem thyme-wdt-test"))) {
+		    starts_with(cmd, "oem thyme-wdt-read") || starts_with(cmd, "oem thyme-wdt-test") || starts_with(cmd, "oem thyme-wdt-arm"))) {
 			fb_reply("FAIL", "a kernel or watchdog expiry trial is running");
 		} else if (starts_with(cmd, "oem stop")) {
 			/* the kernel looks at this once a second and comes back as it does when its time is up */
@@ -4029,6 +4080,15 @@ fb_command(char *cmd)
 			const char *var = cmd + 7;
 			if (str_eq(var, "product")) {
 				fb_reply("OKAY", "xnuloader");
+			} else if (str_eq(var, "watchdog-timeout-ms") || str_eq(var, "loader-mpidr")) {
+				uint32_t saved = log_len;
+				if (str_eq(var, "loader-mpidr")) print("%x", READ_SYSREG(MPIDR_EL1) & 0xffffff);
+				else print("%d", (uint64_t)wdt_physical_ms);
+				log_buf[log_len] = 0;
+				fb_reply("OKAY", log_buf + saved);
+				log_len = saved;
+			} else if (str_eq(var, "watchdog")) {
+				fb_reply("OKAY", wdt_armed ? (wdt_physical ? "physical" : "virtual") : "off");
 			} else if (str_eq(var, "version")) {
 				fb_reply("OKAY", "0.5");
 			} else if (str_eq(var, "max-download-size")) {
@@ -4145,6 +4205,8 @@ fb_command(char *cmd)
 			}
 		} else if (str_eq(cmd, "oem thyme-wdt-read")) {
 			fb_reply(wdt_thyme_snapshot() ? "OKAY" : "FAIL", "read-only physical watchdog snapshot");
+		} else if (str_eq(cmd, "oem thyme-wdt-arm")) {
+			fb_reply(wdt_thyme_start(12, 1) ? "OKAY" : "FAIL", "physical periodic watchdog negotiation");
 		} else if (str_eq(cmd, "oem thyme-wdt-test")) {
 			fb_reply(wdt_thyme_expiry_trial() ? "OKAY" : "FAIL", "physical watchdog expiry trial; USB remains responsive");
 		} else if (starts_with(cmd, "oem hang")) {

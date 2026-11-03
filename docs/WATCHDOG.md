@@ -94,3 +94,23 @@ physical petting, timeout changes and kernel handoff remains necessary. In
 particular, the loader must not request XNU's virtual-SMC pet path when only a
 physical backend is active. No XNU hang or iOS persistence result follows from
 this experiment.
+
+## Periodic physical backend
+
+`oem thyme-wdt-arm` reuses the same checked configuration and counter sampling
+with a 12-second BITE and periodic petting. The original later BARK stays intact.
+Timeout updates are limited to 1–12 seconds and verified by readback; unsupported
+updates refuse kernel handoff. `getvar watchdog` distinguishes physical, virtual
+and inactive states, and `getvar watchdog-timeout-ms` reports the physical limit.
+`getvar loader-mpidr` identifies the loader core for a separate-core launch.
+
+Physical mode omits XNU's virtual-SMC pet boot argument and refuses a real kernel
+handoff on the loader's own core. The existing dedicated-core monitor pets the
+physical timer while watching XNU. USB event servicing also checks the pet
+deadline before returning successful transfers, so sustained traffic cannot
+starve the timer. Production-function host tests cover configuration, timeout
+clamping, pet operations and continuous USB completion behavior.
+
+This backend still needs phone validation: remain resident longer than its
+deadline while petting, then stop petting and confirm automatic Android return.
+The earlier explicit expiry experiment does not establish that integration.
