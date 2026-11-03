@@ -2939,7 +2939,7 @@ static struct {
  * This is deliberately not an arbitrary-address memory access command. The
  * accepted thyme UEFI maps this APSS range as device memory. */
 static int
-wdt_thyme_snapshot(void)
+wdt_thyme_profile(void)
 {
 	static const efi_guid scm_guid = QCOM_SCM_GUID;
 	void *scm = NULL;
@@ -2950,11 +2950,85 @@ wdt_thyme_snapshot(void)
 		print("watchdog physical: captured thyme hardware profile not matched\n");
 		return 0;
 	}
-	const volatile uint32_t *base = (const volatile uint32_t *)(uintptr_t)0x17c10000;
-	uint32_t enable = base[0x08 / 4], status = base[0x0c / 4];
-	uint32_t bark = base[0x10 / 4], bite = base[0x14 / 4];
+	return 1;
+}
+
+#define THYME_WDT_RESET  0x04u
+#define THYME_WDT_ENABLE 0x08u
+#define THYME_WDT_STATUS 0x0cu
+#define THYME_WDT_BARK   0x10u
+#define THYME_WDT_BITE   0x14u
+#define THYME_WDT_MASK   0xfffffu
+#define THYME_WDT_HZ     32765u
+#define THYME_WDT_TRIAL_SECONDS 8u
+static int wdt_trial_pending;
+
+static uint32_t
+wdt_thyme_read(uint32_t offset)
+{
+	return *(const volatile uint32_t *)(uintptr_t)(0x17c10000ULL + offset);
+}
+
+static void
+wdt_thyme_write(uint32_t offset, uint32_t value)
+{
+	__asm__ volatile ("dsb sy" ::: "memory");
+	*(volatile uint32_t *)(uintptr_t)(0x17c10000ULL + offset) = value;
+	__asm__ volatile ("dsb sy" ::: "memory");
+}
+
+static int
+wdt_thyme_snapshot(void)
+{
+	if (!wdt_thyme_profile()) return 0;
+	uint32_t enable = wdt_thyme_read(THYME_WDT_ENABLE), status = wdt_thyme_read(THYME_WDT_STATUS);
+	uint32_t bark = wdt_thyme_read(THYME_WDT_BARK), bite = wdt_thyme_read(THYME_WDT_BITE);
 	print("watchdog physical snapshot: base=17c10000 enable=%x status=%x bark=%x bite=%x (read-only)\n",
 	    (uint64_t)enable, (uint64_t)status, (uint64_t)bark, (uint64_t)bite);
+	return 1;
+}
+
+/* An explicit expiry experiment, not a kernel watchdog backend. Keep USB alive
+ * so the host can cold-reset if expiry does not occur. Nothing pets this trial. */
+static int
+wdt_thyme_expiry_trial(void)
+{
+	if (wdt_trial_pending || wdt_armed || !wdt_thyme_profile()) return 0;
+	uint32_t old_enable = wdt_thyme_read(THYME_WDT_ENABLE);
+	uint32_t old_bark = wdt_thyme_read(THYME_WDT_BARK);
+	uint32_t old_bite = wdt_thyme_read(THYME_WDT_BITE);
+	uint32_t bite = THYME_WDT_HZ * THYME_WDT_TRIAL_SECONDS;
+	uint64_t frequency = READ_SYSREG(CNTFRQ_EL0);
+	if (old_enable != 0 || old_bark > THYME_WDT_MASK || old_bite > THYME_WDT_MASK ||
+	    old_bark <= bite || frequency == 0) {
+		print("watchdog physical trial: existing state unsuitable, no writes\n");
+		return 0;
+	}
+	/* Preserve BARK above the eight-second BITE; no bark IRQ is needed. */
+	wdt_thyme_write(THYME_WDT_BITE, bite);
+	wdt_thyme_write(THYME_WDT_RESET, 1);
+	wdt_thyme_write(THYME_WDT_ENABLE, 1);
+	int valid = wdt_thyme_read(THYME_WDT_ENABLE) == 1 &&
+	    wdt_thyme_read(THYME_WDT_BITE) == bite && wdt_thyme_read(THYME_WDT_BARK) == old_bark;
+	uint64_t started = READ_SYSREG(CNTVCT_EL0);
+	uint32_t before = (wdt_thyme_read(THYME_WDT_STATUS) >> 1) & THYME_WDT_MASK;
+	efi_status waited = BS->stall(20000);
+	uint32_t after = (wdt_thyme_read(THYME_WDT_STATUS) >> 1) & THYME_WDT_MASK;
+	uint64_t elapsed = READ_SYSREG(CNTVCT_EL0) - started;
+	uint64_t rate = elapsed ? (uint64_t)((after - before) & THYME_WDT_MASK) * frequency / elapsed : 0;
+	valid = valid && !EFI_ERROR(waited) && rate >= 30000 && rate <= 35000;
+	if (!valid) {
+		wdt_thyme_write(THYME_WDT_ENABLE, 0);
+		wdt_thyme_write(THYME_WDT_BITE, old_bite);
+		wdt_thyme_write(THYME_WDT_RESET, 1);
+		int restored = wdt_thyme_read(THYME_WDT_ENABLE) == old_enable &&
+		    wdt_thyme_read(THYME_WDT_BITE) == old_bite && wdt_thyme_read(THYME_WDT_BARK) == old_bark;
+		print("watchdog physical trial: verification failed, rate=%d rollback_verified=%d\n", rate, (uint64_t)restored);
+		return 0;
+	}
+	wdt_trial_pending = 1;
+	print("watchdog physical trial: enabled seconds=%d bite=%x bark=%x measured_hz=%d; USB alive, no pet\n",
+	    (uint64_t)THYME_WDT_TRIAL_SECONDS, (uint64_t)bite, (uint64_t)old_bark, rate);
 	return 1;
 }
 
@@ -3940,11 +4014,11 @@ fb_command(char *cmd)
 	int busy = running_live != NULL;
 
 	{
-		if (busy && (starts_with(cmd, "oem ramdisk") || starts_with(cmd, "download:") || starts_with(cmd, "oem run") ||
+		if ((busy || wdt_trial_pending) && (starts_with(cmd, "oem ramdisk") || starts_with(cmd, "download:") || starts_with(cmd, "oem run") ||
 		    starts_with(cmd, "oem selftest") || starts_with(cmd, "oem hang") || starts_with(cmd, "oem recording") ||
 		    starts_with(cmd, "oem sound") || starts_with(cmd, "oem clearscreen") || starts_with(cmd, "oem memmap") ||
-		    starts_with(cmd, "oem thyme-wdt-read"))) {
-			fb_reply("FAIL", "a kernel is running (oem stop ends it)");
+		    starts_with(cmd, "oem thyme-wdt-read") || starts_with(cmd, "oem thyme-wdt-test"))) {
+			fb_reply("FAIL", "a kernel or watchdog expiry trial is running");
 		} else if (starts_with(cmd, "oem stop")) {
 			/* the kernel looks at this once a second and comes back as it does when its time is up */
 			if (busy) {
@@ -4071,6 +4145,8 @@ fb_command(char *cmd)
 			}
 		} else if (str_eq(cmd, "oem thyme-wdt-read")) {
 			fb_reply(wdt_thyme_snapshot() ? "OKAY" : "FAIL", "read-only physical watchdog snapshot");
+		} else if (str_eq(cmd, "oem thyme-wdt-test")) {
+			fb_reply(wdt_thyme_expiry_trial() ? "OKAY" : "FAIL", "physical watchdog expiry trial; USB remains responsive");
 		} else if (starts_with(cmd, "oem hang")) {
 			if (!wdt_armed) {
 				fb_reply("FAIL", "watchdog not armed; hang test refused");

@@ -68,3 +68,14 @@ The register page is accessible from the resident loader and the physical
 watchdog was disabled during this observation. Retrieval of the log and a normal
 cold reset to original Android slot B also passed. No watchdog registers were
 changed and this was not an expiry test.
+
+The explicit `oem thyme-wdt-test` experiment programs an eight-second BITE only
+when the matching physical watchdog is disabled, its existing BARK is later
+than that deadline, and no virtual watchdog or previous trial is active. It
+preserves BARK, verifies register readback and samples the counter against the
+architectural timer over 20 ms. Rejected configuration or clock evidence causes
+disable/restore with a separate rollback readback result. Accepted trials leave
+USB responsive and do not pet the timer; the host can request a normal reset if
+expiry fails. Kernel launches and repeated trials are blocked while it runs.
+Host tests cover that policy with simulated registers. A phone expiry result is
+still required before this can be considered an unattended recovery mechanism.
