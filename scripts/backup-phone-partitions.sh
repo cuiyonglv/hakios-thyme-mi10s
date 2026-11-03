@@ -1,11 +1,13 @@
 #!/system/bin/sh
 # Read-only block sources. Outputs are new private regular files in shell's tmp directory.
 # This runs as the one-shot service in a temporary Android RAM boot, never as a flasher.
+# Invoke with the verified 64-bit BusyBox ash; Android mksh arithmetic wraps at 32 bits.
 set -u
 umask 077
 run=${1:-}
 case "$run" in ''|*[!A-Za-z0-9_-]*) exit 2;; esac
 [ "${#run}" -le 32 ] || exit 2
+[ "$((4294967296))" = 4294967296 ] || exit 6
 [ "$(id -u)" = 0 ] || exit 3
 [ "$(getprop ro.product.device)" = thyme ] || exit 4
 [ "$(getprop ro.build.version.incremental)" = V816.0.4.0.TGACNXM ] || exit 4

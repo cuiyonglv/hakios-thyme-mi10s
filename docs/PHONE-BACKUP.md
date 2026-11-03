@@ -3,6 +3,11 @@
 `scripts/backup-phone-partitions.sh RUNID` is intended for a one-shot root service
 inside a temporary Android RAM boot. It checks UID, thyme, the verified Android
 release and the current B slot before starting. It is not a flashing script.
+Invoke it with the pinned 64-bit BusyBox ash included in that RAM image. Android's
+stock mksh wraps arithmetic at 32 bits even on this arm64 phone: the live check
+`125501964288` became `947912704`. The script now rejects such an interpreter
+before making any output. The verified ash preserves the full value and GPT tail
+offset. Architecture alone is not evidence that shell arithmetic is 64-bit.
 
 The source list is explicit: both boot/vendor_boot/dtbo/vbmeta variants, device
 calibration and identity partitions, metadata, and available firmware partitions.
@@ -25,3 +30,10 @@ checks that function-local variables preserve the caller's GPT suffix offset.
 Live capture, host-side verification and a return to the original Android boot
 remain required before using any backup as a recovery guarantee. Backups contain
 private identifiers and possibly key material; keep them outside the public repo.
+
+`scripts/verify-phone-backup.py` rechecks every retrieved file, validates primary
+and secondary GPT header/entry CRCs and exact agreement, then binds partition
+names and sizes to their actual kernel device numbers. A phone-side `complete`
+marker alone is insufficient. In the first live capture, this verifier correctly
+rejected a wrapped GPT tail offset and an omitted LUN; those captures were not
+accepted as complete recovery material. The original block sources were unchanged.
