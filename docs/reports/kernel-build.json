@@ -1,13 +1,13 @@
 {
   "schema": 1,
   "target": "thyme",
-  "port_revision": "4fece7851ba07d40958024cfbe231c87fccd9b8d",
+  "port_revision": "4daec7a2f21d21916e79e35e367738a185403103",
   "port_clean": true,
   "donor_revision": "f81b29c4253080770a16cd83c606f42fd1631299",
   "donor_clean": true,
   "xnu_base_revision": "c54f35ca767986246321eb901baf8f5ff7923f6a",
   "source_files": 5115,
-  "source_manifest_sha256": "a6b75165aa3edfdfc9d3edd2f0633f6961d88f5c8c4d0acda8d385193a3899cc",
+  "source_manifest_sha256": "b4bd62f7a43edb09258c4f32fc5cd004aab011b1dfe8cb40e14db14575a88d91",
   "overlay": {
     "bsd/dev/redwood_mic.c": "f448de67ef450981203b447d1744a5b25529e1d22af3e66b2aa66ec4e55bff86",
     "bsd/dev/redwood_buttons.c": "fb4f429be9b62aaf1cb17c92358589e352b73e1ec30744ba1b74440a885fd2a1",
@@ -31,7 +31,7 @@
     "bsd/dev/redwood_board.c": "c4616fe28b08d3e6ace3ca5eb7b84628474b27cc208a2b6b2c7aaa85128cdcdd",
     "bsd/dev/redwood_lx.c": "6b8bfe5621a07669163ad74285ac4160479e3e1d4bdf7c5344c6c319a19e1e0e",
     "bsd/dev/redwood_battery.c": "5cb5b97bde1e47c5b6c48b893ef537837a0f7855a8b1ad9da4121fa143be2e6e",
-    "bsd/dev/redwood_wifi.c": "c6401ec372c6fdb01d610550cbe16339793d4221815f41bb70af97b7949c25d8",
+    "bsd/dev/redwood_wifi.c": "7fac79a37f34bbde43c73123184c0eb561903d020815706c9e1379e0100696b5",
     "bsd/dev/redwood_wlfw.c": "23e6e53f6b20f86ba9393cad6070a0f893d8ffc6486b50937341d3ffb6335de7",
     "bsd/dev/redwood_virtio_blk.c": "85dfc73fefac432a3a4de5e2f57b811e5dbc433e971462104f97052d30a2215c",
     "bsd/dev/redwood_audio.c": "aa12ac207c9db3d18f9076f447c2dece7727f488be5d33a37c147daa40e05649",
@@ -191,16 +191,16 @@
   "compiler_wrapper_sha256": "17949bbd912ac1282799b11f89103cab88666adb3d0bd5ff16cab93e71002939",
   "link_flags_sha256": "81211fbed23311dddd55f341fea0bce976f209f0e3642667e47055bf92a72315",
   "make_exit_code": 0,
-  "make_seconds": 1.5208566000000001,
-  "make_log_sha256": "24f9dfef629768ea489a5cde60103dbdfc1c94f2f066eb288e5176bf47dbab43",
+  "make_seconds": 4.868208135000003,
+  "make_log_sha256": "02ae1898b9872ac452106a68ef65a85d2a9761c6d1fa891468bfb89188a989d2",
   "artifacts": {
     "mach.development.bcm2837": {
       "bytes": 15354440,
-      "sha256": "3e4cda9520acac3b24a1e03a5038208bcf6791e4fcc889c1cac859cc40121cfd"
+      "sha256": "665eec87b8612f8157779e053b83cfc616aa9ccd894d34c86389b9021cf54caa"
     },
     "mach.development.bcm2837.unstripped": {
       "bytes": 19205040,
-      "sha256": "fdad407ac1295998a2a7b9da0811e2325210e27d8f3d0af7297052ebace32013"
+      "sha256": "851ef43d3dd25567608fb65afcf5123b03df31b3bf6a0799106d0598041acd2f"
     }
   },
   "optional_ath11k_object_present": false,

@@ -40,5 +40,5 @@ the old UMI selection. This does not prove that the radio boots or joins a netwo
 
 Next: stage the correct firmware into the matching system image, build/audit the
 optional ath11k adaptation, review the phone-specific UEFI drivers, and obtain
-the connected phone's current firmware/unique-partition backups before any boot
+the connected phone's current firmware/unique-partition backups before an iOS boot
 or storage experiment.

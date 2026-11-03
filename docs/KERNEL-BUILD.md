@@ -60,7 +60,8 @@ is retained with its 35 unavailable Apple-only interfaces recorded separately:
 - [Actual clean-cohort build record](reports/kernel-build.json)
 
 The clean source checkout is port revision
-`4fece7851ba07d40958024cfbe231c87fccd9b8d`. All 138 kernel overlay files and all
+`4daec7a2f21d21916e79e35e367738a185403103` (including the thyme WiFi board-data fix).
+All 138 kernel overlay files and all
 34 generated IIG source/header files match the build tree byte for byte. The
 one old CRLF-only touch source was aligned before rebuilding. The record binds
 the 5,115-file source manifest, selected contract, compiler wrapper, link flags,
