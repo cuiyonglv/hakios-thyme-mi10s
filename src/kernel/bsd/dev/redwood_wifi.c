@@ -4149,7 +4149,8 @@ redwood_wifi_dsp_is_up(void)
  * ath11k asks by its Linux firmware-tree names. HK maps board.bin and regdb.bin to the
  * files for its WCN6750. UMI maps QCA6390's amss.bin, m3.bin, board.bin, and regdb.bin to the
  * vendor files bundled under fw/qca6390. QCA's board-2.bin is absent; ath11k falls back to
- * board.bin, which stock UMI CNSS supplies as bd_j1gl.elf. This resolves files only; UMI's PCIe/MHI path
+ * board.bin. This thyme target needs bd_j2s.elf, not UMI's bd_j1gl.elf: stock
+ * CNSS selects the J2S file for HARDWARE_PLATFORM_THYME. This resolves files only; the PCIe/MHI path
  * still has to start the radio before ath11k can use them.
  */
 const uint8_t *
@@ -4159,7 +4160,7 @@ redwood_wifi_driver_file(const char *name, uint64_t *size)
 	static const char *const umi_files[][2] = {
 		{ "amss.bin", "qca6390/amss20.bin" },
 		{ "m3.bin", "qca6390/m3.bin" },
-		{ "board.bin", "qca6390/bd_j1gl.elf" },
+		{ "board.bin", "qca6390/bd_j2s.elf" },
 		{ "regdb.bin", "qca6390/regdb.bin" },
 	};
 	const char *last = strrchr(name, '/');

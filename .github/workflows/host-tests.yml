@@ -14,6 +14,8 @@ jobs:
         run: python3 scripts/test-cached-apple-iig.py
       - name: Explicit thyme platform export contract
         run: python3 scripts/test-thyme-exports.py
+      - name: Thyme QCA6390 firmware board data
+        run: python3 scripts/test-wifi-firmware.py
       - name: Image packer and atomic output
         run: python3 scripts/test-build-image.py
       - name: Shared legacy storage contract
