@@ -933,6 +933,9 @@ whole_path(const char *relative, uint32_t len)
 	if (len == 0 || len >= MAX_PATH - sizeof(ROOT) - 1 || relative[0] == '/') {
 		return 0;
 	}
+	if (memchr(relative, 0, len) != NULL) {
+		return 0;       /* counted archive names must not hide a second suffix */
+	}
 	for (uint32_t i = 0; i + 1 < len; i++) {
 		if (relative[i] == '.' && relative[i + 1] == '.' &&
 		    (i == 0 || relative[i - 1] == '/') && (i + 2 == len || relative[i + 2] == '/')) {
@@ -973,7 +976,9 @@ unpack_one(int make)
 	if (!in(&e, sizeof(e))) {
 		return 0;
 	}
-	if (e.pathlen >= MAX_PATH || e.nxattr > 4096) {
+	if (e.pathlen >= MAX_PATH || e.nxattr > 4096 ||
+	    e.kind < ENT_DIR || e.kind > ENT_DIRTIME ||
+	    ((e.kind == ENT_DIR || e.kind == ENT_DIRTIME) && e.size != 0)) {
 		printf("var_store: an entry this program cannot read (kind %u, path %u bytes)\n", e.kind,
 		    e.pathlen);
 		return 0;
@@ -982,6 +987,12 @@ unpack_one(int make)
 		return 0;
 	}
 	relative[e.pathlen] = 0;
+	/* Validate names in the checksum-only pass too, before any files are made.
+	 * The packer emits an empty name only for the root directory's metadata. */
+	if ((e.pathlen != 0 && !whole_path(relative, e.pathlen)) ||
+	    (e.pathlen == 0 && e.kind != ENT_DIR && e.kind != ENT_DIRTIME)) {
+		return 0;
+	}
 	if (make && !whole_path(relative, e.pathlen)) {
 		make = 0;               /* read past it: an archive is not to make names of its own choosing */
 	}

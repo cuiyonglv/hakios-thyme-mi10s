@@ -26,5 +26,7 @@ jobs:
         run: python3 scripts/test-loader-build-record.py
       - name: Persistence slot selection and fallback
         run: python3 scripts/test-var-store-selection.py
+      - name: Persistence unpacking on temporary files
+        run: python3 scripts/test-var-store-unpack.py
       - name: Kernel export audit semantics
         run: python3 scripts/test-kernel-export-audit.py
