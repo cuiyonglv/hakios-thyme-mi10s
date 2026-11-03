@@ -1,0 +1,50 @@
+--- a/Platforms/Xiaomi/umiPkg/umi.dsc
++++ b/Platforms/Xiaomi/umiPkg/umi.dsc
+@@ -30,7 +30,7 @@
+   # 1 = SM8250-AB
+   # 2 = SM8250-AC
+   #
+-  SOC_TYPE                       = 0
++  SOC_TYPE                       = 2
+ 
+ !include KonaPkg/KonaPkg.dsc.inc
+ 
+@@ -50,10 +50,10 @@
+   # SMBIOS
+   #
+   gSiliciumPkgTokenSpaceGuid.PcdSmbiosSystemManufacturer|"Xiaomi"
+-  gSiliciumPkgTokenSpaceGuid.PcdSmbiosSystemRetailModel|"umi"
+-  gSiliciumPkgTokenSpaceGuid.PcdSmbiosSystemModel|"Mi 10"
+-  gSiliciumPkgTokenSpaceGuid.PcdSmbiosSystemRetailSku|"M2001J2G"
+-  gSiliciumPkgTokenSpaceGuid.PcdSmbiosSystemBoardModel|"UMI"
++  gSiliciumPkgTokenSpaceGuid.PcdSmbiosSystemRetailModel|"thyme"
++  gSiliciumPkgTokenSpaceGuid.PcdSmbiosSystemModel|"Mi 10S"
++  gSiliciumPkgTokenSpaceGuid.PcdSmbiosSystemRetailSku|"M2102J2SC"
++  gSiliciumPkgTokenSpaceGuid.PcdSmbiosSystemBoardModel|"THYME"
+ 
+ 
+   #
+--- a/Platforms/Xiaomi/umiPkg/Include/APRIORI.inc
++++ b/Platforms/Xiaomi/umiPkg/Include/APRIORI.inc
+@@ -30,7 +30,7 @@
+   INF Binaries/umi/QcomPkg/Drivers/ShmBridgeDxe/ShmBridgeDxeLA.inf
+   INF Binaries/umi/QcomPkg/Drivers/TzDxe/ScmDxeLA.inf
+   INF Binaries/umi/QcomPkg/Drivers/TLMMDxe/TLMMDxe.inf
+-  INF Binaries/umi/QcomPkg/Drivers/ResetRuntimeDxe/ResetRuntimeDxe.inf
++  # ResetSystemRuntimeDxe uses the audited PSCI reset library; no second reset service.
+   INF Binaries/umi/QcomPkg/Drivers/PmicDxe/PmicDxeLa.inf
+ 
+   INF MdeModulePkg/Universal/Disk/UnicodeCollation/EnglishDxe/EnglishDxe.inf
+--- a/Platforms/Xiaomi/umiPkg/Library/BootManagerLib/BootManager.c
++++ b/Platforms/Xiaomi/umiPkg/Library/BootManagerLib/BootManager.c
+@@ -218,8 +218,8 @@
+   // Wait 10s
+   gBS->Stall (10000000);
+ 
+-  // Shutdown
+-  gRT->ResetSystem (EfiResetShutdown, EFI_SUCCESS, 0, NULL);
++  // Return to the original Android boot path for unattended recovery.
++  gRT->ResetSystem (EfiResetCold, EFI_SUCCESS, 0, NULL);
+ 
+   // Do Cpu Dead Loop
+   CpuDeadLoop ();

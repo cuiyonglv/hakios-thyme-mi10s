@@ -1,6 +1,6 @@
 # Thyme UEFI preparation
 
-Status: firmware analysis and offline preparation. No new UEFI phone boot has
+Status: native UEFI build and firmware readback checks passed. No new UEFI phone boot has
 been accepted. Kernel, root image and loader builds do not establish that the
 firmware handoff, memory map or recovery timer works on this phone.
 
@@ -64,3 +64,25 @@ do not substitute another phone's firmware. Keep extracted modules, FDT,
 backups, logs and all device identifiers outside the public repository. Before
 a temporary UEFI test, verify the full cohort and an unattended return path.
 Storage writes, GPT changes and slot changes remain disabled.
+
+## Native build result
+
+The RELEASE CLANGPDB build completed with the staged thyme source, producing a
+3145728-byte FD. Postbuild validation checked 48 compiled PE images. Independent
+parsing of the completed FD found all 43 active Qualcomm driver GUIDs and checked
+their executable/dependency section hashes against the phone's captured XBL,
+with only the explicitly reviewed TzDxe state byte changed.
+
+That audit initially found a reference APRIORI entry for `ResetRuntimeDxe` with no
+corresponding driver embedded in the FD. `thyme-platform.patch` removes the stale
+entry and retains the source-built `ResetSystemRuntimeDxe` with the PSCI library.
+The actual build report selects SMC (`PcdMonitorConduitHvc=0`), matching the live
+FDT's PSCI method. The boot-manager fallback requests a cold reset after its
+10-second wait, so a missing payload follows the normal Android boot path rather
+than intentionally shutting the phone down. These are source and build checks;
+the reset and watchdog paths still require phone validation.
+
+The platform patch also selects SM8250-AC and the Mi 10S model identity. It applies
+cleanly to the pinned reference package and reproduces the three changed native
+source files exactly. The bounded handoff and memory map are separate source
+overlays under `src/uefi/Library/`. No prebuilt firmware is published here.

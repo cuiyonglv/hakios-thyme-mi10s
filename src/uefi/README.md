@@ -14,9 +14,15 @@ The live display-dump reservation and DDR hole are also excluded from allocation
 
 Static validation found 29 non-overlapping RAM descriptors and complete
 non-conventional coverage of all 22 static live-FDT reserved-memory ranges.
-Those checks do not establish a UEFI boot or validate DMA behavior. The full
-platform build, bounded RAM boot and unattended recovery path are still required.
+Those checks do not establish a UEFI boot or validate DMA behavior. The native
+platform build and firmware-section readback have passed. A bounded RAM boot
+and unattended recovery validation are still required.
 See `docs/UEFI-BRINGUP.md`; this directory is not a ready-to-flash image.
+
+`thyme-platform.patch` applies to the pinned reference package after staging it
+into Mu-Silicium. It selects the thyme SoC/model identity, removes a stale
+APRIORI reset-driver reference, and changes the no-OS fallback to a cold reset.
+This patch retains the reference package's APSL 2.0 license.
 
 `BootManagerLib/PayloadView.h` is a new MIT-licensed bounded XNUP selector.
 The handoff validates the whole declared container before calling `LoadImage`,

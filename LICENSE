@@ -13,7 +13,7 @@ Two licenses apply, by directory — the same split the base HakiOS project uses
    src/kernel-patches/ — is licensed under the **MIT License** below.
 
 The UEFI map in **src/uefi/Library/MemoryMapLib/** and the UmiXnu.c handoff in
-**src/uefi/Library/BootManagerLib/** are adapted from
+**src/uefi/Library/BootManagerLib/**, along with **src/uefi/thyme-platform.patch**, are adapted from
 azzlantern/hackios-thyme and retains that package's **APSL 2.0** license.
 See src/uefi/README.md for the exact source revision and LICENSE.APSL for its text.
 
