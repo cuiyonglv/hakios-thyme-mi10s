@@ -111,9 +111,20 @@ deadline before returning successful transfers, so sustained traffic cannot
 starve the timer. Production-function host tests cover configuration, timeout
 clamping, pet operations and continuous USB completion behavior.
 
-This backend still needs phone validation: remain resident longer than its
-deadline while petting, then stop petting and confirm automatic Android return.
-The earlier explicit expiry experiment does not establish that integration.
+Phone integration validation with loader
+`134ba8ac3b7767213f22760b1245d1e01fdaa786` passed: the device reported the physical
+backend and 12000 ms timeout, remained resident for 30.047 seconds while petting,
+then accepted the guarded hang request. It returned to original Android slot B
+without a host reset, with a changed kernel boot ID. The loader ran on MPIDR 0,
+which must be excluded from the subsequent kernel's core set.
+
+Windows device-tree/Android transport transition was observed at 33.0 seconds
+after the request. That includes reset, boot and USB re-enumeration; it does not
+measure the configured 12-second bite edge. Earlier observer attempts failed on
+a blocked Fastboot enumeration and on an overly short USB-observation window;
+they were not recorded as complete passes. The accepted run used cached Windows
+devnode presence and Android transport discovery with no post-request reset.
+Kernel execution under the physical backend remains untested.
 
 The hang-test path suppresses petting **before** transmitting its OKAY reply.
 Reply transmission pumps USB events too; waiting until after that transfer could
