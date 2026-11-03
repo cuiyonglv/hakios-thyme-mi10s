@@ -57,6 +57,20 @@ is retained with its 35 unavailable Apple-only interfaces recorded separately:
 - [Exact selection and input hashes](reports/thyme-export-profile.json)
 - [Native IIG input hashes](reports/iig-native-input-files.json)
 - [System extension static imports](reports/system-extension-imports.json)
+- [Actual clean-cohort build record](reports/kernel-build.json)
+
+The clean source checkout is port revision
+`4fece7851ba07d40958024cfbe231c87fccd9b8d`. All 138 kernel overlay files and all
+34 generated IIG source/header files match the build tree byte for byte. The
+one old CRLF-only touch source was aligned before rebuilding. The record binds
+the 5,115-file source manifest, selected contract, compiler wrapper, link flags,
+complete make log and both output hashes. Both outputs are arm64 MH_EXECUTE with
+MH_NOUNDEFS, and `llvm-nm -uj` reports no undefined imports.
+
+The optional external ath11k object is **absent** in this build. That does not
+certify the radio path as usable; review the phone's actual radio, firmware and
+driver configuration before enabling it. Hardware mapping for touch, GPU and
+other peripherals also still requires the phone's own firmware/device tree.
 
 This is build acceptance for the selected target contract. Device firmware,
 recovery, image composition and live phone functionality remain separate gates.

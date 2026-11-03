@@ -2,7 +2,7 @@
   "schema": 1,
   "target": "thyme",
   "xnu_commit": "c54f35ca767986246321eb901baf8f5ff7923f6a",
-  "profile_sha256": "6f2cd3eb5dcb4199e1afccfd3fba25fe06d298947aacce99e056bec3b5fe1f8c",
+  "profile_sha256": "e67e350f2ab4bf62fbbd0c5c5372060a173e5dd64a078d9085395383cff677d5",
   "original_sha256": "00e242d4bb226e76c5d759be06606722bcd006dba267cfc5b5e42a0b44ea9dc9",
   "selected_sha256": "1007313296997af26a8f31e3cf27517d5cfada2c0b5228c187b0f1bdfc822864",
   "symbols_sha256": "29f79103b1d1240f1e47bf0cc163adc17ec87943e298937b938170b7f137d3e1",
@@ -57,18 +57,18 @@
     "symbol_file_sha256": "29f79103b1d1240f1e47bf0cc163adc17ec87943e298937b938170b7f137d3e1",
     "export_files": [
       {
-        "name": "Private.arm64.exports",
+        "name": "Private.arm64.apple.exports",
         "sha256": "00e242d4bb226e76c5d759be06606722bcd006dba267cfc5b5e42a0b44ea9dc9"
       }
     ],
     "missing_declarations": 35,
     "with_existing_impl_candidate": 0,
     "missing_by_file": {
-      "Private.arm64.exports": 35
+      "Private.arm64.apple.exports": 35
     },
     "missing": [
       {
-        "file": "Private.arm64.exports",
+        "file": "Private.arm64.apple.exports",
         "line": 78,
         "exported": "_pmap_iommu_init",
         "target": "_pmap_iommu_init",
@@ -76,7 +76,7 @@
         "likely_driverkit_rpc": false
       },
       {
-        "file": "Private.arm64.exports",
+        "file": "Private.arm64.apple.exports",
         "line": 79,
         "exported": "_pmap_iommu_iovmalloc",
         "target": "_pmap_iommu_iovmalloc",
@@ -84,7 +84,7 @@
         "likely_driverkit_rpc": false
       },
       {
-        "file": "Private.arm64.exports",
+        "file": "Private.arm64.apple.exports",
         "line": 80,
         "exported": "_pmap_iommu_map",
         "target": "_pmap_iommu_map",
@@ -92,7 +92,7 @@
         "likely_driverkit_rpc": false
       },
       {
-        "file": "Private.arm64.exports",
+        "file": "Private.arm64.apple.exports",
         "line": 81,
         "exported": "_pmap_iommu_unmap",
         "target": "_pmap_iommu_unmap",
@@ -100,7 +100,7 @@
         "likely_driverkit_rpc": false
       },
       {
-        "file": "Private.arm64.exports",
+        "file": "Private.arm64.apple.exports",
         "line": 82,
         "exported": "_pmap_iommu_iovmfree",
         "target": "_pmap_iommu_iovmfree",
@@ -108,7 +108,7 @@
         "likely_driverkit_rpc": false
       },
       {
-        "file": "Private.arm64.exports",
+        "file": "Private.arm64.apple.exports",
         "line": 83,
         "exported": "_pmap_iommu_ioctl",
         "target": "_pmap_iommu_ioctl",
@@ -116,7 +116,7 @@
         "likely_driverkit_rpc": false
       },
       {
-        "file": "Private.arm64.exports",
+        "file": "Private.arm64.apple.exports",
         "line": 84,
         "exported": "_pmap_iommu_alloc_contiguous_pages",
         "target": "_pmap_iommu_alloc_contiguous_pages",
@@ -124,7 +124,7 @@
         "likely_driverkit_rpc": false
       },
       {
-        "file": "Private.arm64.exports",
+        "file": "Private.arm64.apple.exports",
         "line": 85,
         "exported": "_nvme_ppl_get_desc",
         "target": "_nvme_ppl_get_desc",
@@ -132,7 +132,7 @@
         "likely_driverkit_rpc": false
       },
       {
-        "file": "Private.arm64.exports",
+        "file": "Private.arm64.apple.exports",
         "line": 86,
         "exported": "_sart_get_desc",
         "target": "_sart_get_desc",
@@ -140,7 +140,7 @@
         "likely_driverkit_rpc": false
       },
       {
-        "file": "Private.arm64.exports",
+        "file": "Private.arm64.apple.exports",
         "line": 87,
         "exported": "_t8020dart_get_desc",
         "target": "_t8020dart_get_desc",
@@ -148,7 +148,7 @@
         "likely_driverkit_rpc": false
       },
       {
-        "file": "Private.arm64.exports",
+        "file": "Private.arm64.apple.exports",
         "line": 88,
         "exported": "_t8020dart_vo_tte",
         "target": "_t8020dart_vo_tte",
@@ -156,7 +156,7 @@
         "likely_driverkit_rpc": false
       },
       {
-        "file": "Private.arm64.exports",
+        "file": "Private.arm64.apple.exports",
         "line": 89,
         "exported": "_t6000dart_get_desc",
         "target": "_t6000dart_get_desc",
@@ -164,7 +164,7 @@
         "likely_driverkit_rpc": false
       },
       {
-        "file": "Private.arm64.exports",
+        "file": "Private.arm64.apple.exports",
         "line": 90,
         "exported": "_t6000dart_vo_tte",
         "target": "_t6000dart_vo_tte",
@@ -172,7 +172,7 @@
         "likely_driverkit_rpc": false
       },
       {
-        "file": "Private.arm64.exports",
+        "file": "Private.arm64.apple.exports",
         "line": 91,
         "exported": "_t8110dart_get_desc",
         "target": "_t8110dart_get_desc",
@@ -180,7 +180,7 @@
         "likely_driverkit_rpc": false
       },
       {
-        "file": "Private.arm64.exports",
+        "file": "Private.arm64.apple.exports",
         "line": 92,
         "exported": "_t8110dart_max_translation_levels",
         "target": "_t8110dart_max_translation_levels",
@@ -188,7 +188,7 @@
         "likely_driverkit_rpc": false
       },
       {
-        "file": "Private.arm64.exports",
+        "file": "Private.arm64.apple.exports",
         "line": 93,
         "exported": "_t8110dart_vo_tte",
         "target": "_t8110dart_vo_tte",
@@ -196,7 +196,7 @@
         "likely_driverkit_rpc": false
       },
       {
-        "file": "Private.arm64.exports",
+        "file": "Private.arm64.apple.exports",
         "line": 94,
         "exported": "_t8110dart_vo_tt_index",
         "target": "_t8110dart_vo_tt_index",
@@ -204,7 +204,7 @@
         "likely_driverkit_rpc": false
       },
       {
-        "file": "Private.arm64.exports",
+        "file": "Private.arm64.apple.exports",
         "line": 96,
         "exported": "_uat_get_desc",
         "target": "_uat_get_desc",
@@ -212,7 +212,7 @@
         "likely_driverkit_rpc": false
       },
       {
-        "file": "Private.arm64.exports",
+        "file": "Private.arm64.apple.exports",
         "line": 103,
         "exported": "__ZN26IOUnifiedAddressTranslator10gMetaClassE",
         "target": "__ZN26IOUnifiedAddressTranslator10gMetaClassE",
@@ -220,7 +220,7 @@
         "likely_driverkit_rpc": false
       },
       {
-        "file": "Private.arm64.exports",
+        "file": "Private.arm64.apple.exports",
         "line": 104,
         "exported": "__ZN26IOUnifiedAddressTranslator10superClassE",
         "target": "__ZN26IOUnifiedAddressTranslator10superClassE",
@@ -228,7 +228,7 @@
         "likely_driverkit_rpc": false
       },
       {
-        "file": "Private.arm64.exports",
+        "file": "Private.arm64.apple.exports",
         "line": 105,
         "exported": "__ZN26IOUnifiedAddressTranslator17getPageTableEntryEy",
         "target": "__ZN26IOUnifiedAddressTranslator17getPageTableEntryEy",
@@ -236,7 +236,7 @@
         "likely_driverkit_rpc": false
       },
       {
-        "file": "Private.arm64.exports",
+        "file": "Private.arm64.apple.exports",
         "line": 106,
         "exported": "__ZN26IOUnifiedAddressTranslator18setClientContextIDEjb",
         "target": "__ZN26IOUnifiedAddressTranslator18setClientContextIDEjb",
@@ -244,7 +244,7 @@
         "likely_driverkit_rpc": false
       },
       {
-        "file": "Private.arm64.exports",
+        "file": "Private.arm64.apple.exports",
         "line": 107,
         "exported": "__ZN26IOUnifiedAddressTranslator21removeClientContextIDEv",
         "target": "__ZN26IOUnifiedAddressTranslator21removeClientContextIDEv",
@@ -252,7 +252,7 @@
         "likely_driverkit_rpc": false
       },
       {
-        "file": "Private.arm64.exports",
+        "file": "Private.arm64.apple.exports",
         "line": 108,
         "exported": "__ZN26IOUnifiedAddressTranslator19isPageFaultExpectedEyj",
         "target": "__ZN26IOUnifiedAddressTranslator19isPageFaultExpectedEyj",
@@ -260,7 +260,7 @@
         "likely_driverkit_rpc": false
       },
       {
-        "file": "Private.arm64.exports",
+        "file": "Private.arm64.apple.exports",
         "line": 109,
         "exported": "__ZN26IOUnifiedAddressTranslator22registerTaskForServiceEP4taskP9IOService",
         "target": "__ZN26IOUnifiedAddressTranslator22registerTaskForServiceEP4taskP9IOService",
@@ -268,7 +268,7 @@
         "likely_driverkit_rpc": false
       },
       {
-        "file": "Private.arm64.exports",
+        "file": "Private.arm64.apple.exports",
         "line": 110,
         "exported": "__ZN26IOUnifiedAddressTranslator23createMappingInApertureEjP18IOMemoryDescriptorjym",
         "target": "__ZN26IOUnifiedAddressTranslator23createMappingInApertureEjP18IOMemoryDescriptorjym",
@@ -276,7 +276,7 @@
         "likely_driverkit_rpc": false
       },
       {
-        "file": "Private.arm64.exports",
+        "file": "Private.arm64.apple.exports",
         "line": 111,
         "exported": "__ZN26IOUnifiedAddressTranslator23getTotalPageTableMemoryEv",
         "target": "__ZN26IOUnifiedAddressTranslator23getTotalPageTableMemoryEv",
@@ -284,7 +284,7 @@
         "likely_driverkit_rpc": false
       },
       {
-        "file": "Private.arm64.exports",
+        "file": "Private.arm64.apple.exports",
         "line": 112,
         "exported": "__ZN26IOUnifiedAddressTranslator3mapEP11IOMemoryMapj",
         "target": "__ZN26IOUnifiedAddressTranslator3mapEP11IOMemoryMapj",
@@ -292,7 +292,7 @@
         "likely_driverkit_rpc": false
       },
       {
-        "file": "Private.arm64.exports",
+        "file": "Private.arm64.apple.exports",
         "line": 113,
         "exported": "__ZN26IOUnifiedAddressTranslator5doMapEP18IOMemoryDescriptoryyj",
         "target": "__ZN26IOUnifiedAddressTranslator5doMapEP18IOMemoryDescriptoryyj",
@@ -300,7 +300,7 @@
         "likely_driverkit_rpc": false
       },
       {
-        "file": "Private.arm64.exports",
+        "file": "Private.arm64.apple.exports",
         "line": 114,
         "exported": "__ZN26IOUnifiedAddressTranslator5unmapEP11IOMemoryMap",
         "target": "__ZN26IOUnifiedAddressTranslator5unmapEP11IOMemoryMap",
@@ -308,7 +308,7 @@
         "likely_driverkit_rpc": false
       },
       {
-        "file": "Private.arm64.exports",
+        "file": "Private.arm64.apple.exports",
         "line": 115,
         "exported": "__ZN26IOUnifiedAddressTranslator7doUnmapEP18IOMemoryDescriptoryy",
         "target": "__ZN26IOUnifiedAddressTranslator7doUnmapEP18IOMemoryDescriptoryy",
@@ -316,7 +316,7 @@
         "likely_driverkit_rpc": false
       },
       {
-        "file": "Private.arm64.exports",
+        "file": "Private.arm64.apple.exports",
         "line": 116,
         "exported": "__ZN26IOUnifiedAddressTranslator8taskDiedEv",
         "target": "__ZN26IOUnifiedAddressTranslator8taskDiedEv",
@@ -324,7 +324,7 @@
         "likely_driverkit_rpc": false
       },
       {
-        "file": "Private.arm64.exports",
+        "file": "Private.arm64.apple.exports",
         "line": 117,
         "exported": "__ZN26IOUnifiedAddressTranslator12commitUnmapsEv",
         "target": "__ZN26IOUnifiedAddressTranslator12commitUnmapsEv",
@@ -332,7 +332,7 @@
         "likely_driverkit_rpc": false
       },
       {
-        "file": "Private.arm64.exports",
+        "file": "Private.arm64.apple.exports",
         "line": 118,
         "exported": "__ZN26IOUnifiedAddressTranslator14prepareFWUnmapEyy",
         "target": "__ZN26IOUnifiedAddressTranslator14prepareFWUnmapEyy",
@@ -340,7 +340,7 @@
         "likely_driverkit_rpc": false
       },
       {
-        "file": "Private.arm64.exports",
+        "file": "Private.arm64.apple.exports",
         "line": 119,
         "exported": "__ZTV26IOUnifiedAddressTranslator",
         "target": "__ZTV26IOUnifiedAddressTranslator",
