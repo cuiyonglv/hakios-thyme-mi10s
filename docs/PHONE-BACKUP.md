@@ -37,3 +37,12 @@ names and sizes to their actual kernel device numbers. A phone-side `complete`
 marker alone is insufficient. In the first live capture, this verifier correctly
 rejected a wrapped GPT tail offset and an omitted LUN; those captures were not
 accepted as complete recovery material. The original block sources were unchanged.
+
+`capture-phone-boot-context.sh` runs as a separate temporary root service to save
+the actual bootloader-patched FDT, reserved-memory map and boot logs. A merged
+stock DTB/DTBO is useful for analysis but does not contain the live bootloader's
+memory and display fixups. Required inputs must be readable and fit their capture
+limits; missing optional framebuffer sysfs files are recorded without inventing
+addresses. Retrieve the private files, verify their hashes and parse the FDT on
+the host before deriving any UEFI memory map. A successful capture does not prove
+that a UEFI image built from it will boot.
