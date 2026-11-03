@@ -54,3 +54,10 @@ firmware environment. No deliberate hang was requested, and no physical
 watchdog registers were changed. The next recovery work must examine the actual
 thyme physical-watchdog interface, with read-only register observations before
 configuration and a separate expiry test before relying on it.
+
+`oem thyme-wdt-read` provides that initial read-only snapshot of ENABLE, STATUS,
+BARK and BITE at the captured `0x17c10000` base. It checks the observed Qualcomm
+MIDR implementer/part, display geometry/base and SCM interface before any read,
+accepts no address argument, and refuses to run while a kernel session is active.
+It neither arms the physical watchdog nor changes any of its registers. This
+diagnostic is intended only for the matching, separately verified thyme UEFI map.

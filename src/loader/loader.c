@@ -2609,6 +2609,29 @@ wdt_arm(void)
 	print("watchdog: verified armed=%d readback_ret=%x ctl=%x\n", (uint64_t)wdt_armed, after, after_ctl);
 }
 
+/* Read-only diagnostic for the physical watchdog in the captured thyme FDT.
+ * This is deliberately not an arbitrary-address memory access command. The
+ * accepted thyme UEFI maps this APSS range as device memory. */
+static int
+wdt_thyme_snapshot(void)
+{
+	static const efi_guid scm_guid = QCOM_SCM_GUID;
+	void *scm = NULL;
+	uint64_t midr = READ_SYSREG(MIDR_EL1);
+	if (SCREEN.base != 0x9c000000 || SCREEN.width != 1080 || SCREEN.height != 2340 ||
+	    (midr >> 24) != 0x51 || ((midr >> 4) & 0xfff) != 0x805 ||
+	    EFI_ERROR(BS->locate_protocol(&scm_guid, NULL, &scm)) || scm == NULL) {
+		print("watchdog physical: captured thyme hardware profile not matched\n");
+		return 0;
+	}
+	const volatile uint32_t *base = (const volatile uint32_t *)(uintptr_t)0x17c10000;
+	uint32_t enable = base[0x08 / 4], status = base[0x0c / 4];
+	uint32_t bark = base[0x10 / 4], bite = base[0x14 / 4];
+	print("watchdog physical snapshot: base=17c10000 enable=%x status=%x bark=%x bite=%x (read-only)\n",
+	    (uint64_t)enable, (uint64_t)status, (uint64_t)bark, (uint64_t)bite);
+	return 1;
+}
+
 /* ------------------------------------------------------------------------ */
 /* UEFI exception hook: put the fault into the log instead of on the screen  */
 
@@ -3918,7 +3941,8 @@ fb_command(char *cmd)
 	{
 		if (busy && (starts_with(cmd, "oem ramdisk") || starts_with(cmd, "download:") || starts_with(cmd, "oem run") ||
 		    starts_with(cmd, "oem selftest") || starts_with(cmd, "oem hang") || starts_with(cmd, "oem recording") ||
-		    starts_with(cmd, "oem sound") || starts_with(cmd, "oem clearscreen") || starts_with(cmd, "oem memmap"))) {
+		    starts_with(cmd, "oem sound") || starts_with(cmd, "oem clearscreen") || starts_with(cmd, "oem memmap") ||
+		    starts_with(cmd, "oem thyme-wdt-read"))) {
 			fb_reply("FAIL", "a kernel is running (oem stop ends it)");
 		} else if (starts_with(cmd, "oem stop")) {
 			/* the kernel looks at this once a second and comes back as it does when its time is up */
@@ -4044,6 +4068,8 @@ fb_command(char *cmd)
 				set_result("not-started", 0, 0);
 				compose_logs(NULL, 0);
 			}
+		} else if (str_eq(cmd, "oem thyme-wdt-read")) {
+			fb_reply(wdt_thyme_snapshot() ? "OKAY" : "FAIL", "read-only physical watchdog snapshot");
 		} else if (starts_with(cmd, "oem hang")) {
 			if (!wdt_armed) {
 				fb_reply("FAIL", "watchdog not armed; hang test refused");
