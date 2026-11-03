@@ -1,0 +1,313 @@
+{
+  "schema": 1,
+  "known_incomplete_inputs": false,
+  "files": [
+    {
+      "kind": "generated",
+      "name": "IOBufferMemoryDescriptor.iig.cpp",
+      "sha256": "4af517065cf6c454f990569527f8f499e601adacfd0bc37adf561e809448706b",
+      "empty_shim_output": false,
+      "unsupported_stub_symbols": [],
+      "direct_branch_wrappers": 0,
+      "known_stand_in": false
+    },
+    {
+      "kind": "generated",
+      "name": "IODMACommand.iig.cpp",
+      "sha256": "49b661eb5a46123bd65ac8137bf3fe5949c4ac3f944aefb5c8859b90b429d879",
+      "empty_shim_output": false,
+      "unsupported_stub_symbols": [],
+      "direct_branch_wrappers": 0,
+      "known_stand_in": false
+    },
+    {
+      "kind": "generated",
+      "name": "IODataQueueDispatchSource.iig.cpp",
+      "sha256": "a0604b51283e7e7e29389fe87aa1bba36be516e5ef9059844c0966ccc1e1c43a",
+      "empty_shim_output": false,
+      "unsupported_stub_symbols": [],
+      "direct_branch_wrappers": 0,
+      "known_stand_in": false
+    },
+    {
+      "kind": "generated",
+      "name": "IODispatchQueue.iig.cpp",
+      "sha256": "0360a81bf7bb0924b3d48acf02b674440c46843c9e9c6629794d7052a95462ee",
+      "empty_shim_output": false,
+      "unsupported_stub_symbols": [],
+      "direct_branch_wrappers": 0,
+      "known_stand_in": false
+    },
+    {
+      "kind": "generated",
+      "name": "IODispatchSource.iig.cpp",
+      "sha256": "1570740d35d7dcdb85410b06344b8433f9feb746a8559eb0e0218b6268827a86",
+      "empty_shim_output": false,
+      "unsupported_stub_symbols": [],
+      "direct_branch_wrappers": 0,
+      "known_stand_in": false
+    },
+    {
+      "kind": "generated",
+      "name": "IOEventLink.iig.cpp",
+      "sha256": "250b17bbeacc56815b73e984014c44aa745b7d87c69cf17b98d3f8c07f4f5690",
+      "empty_shim_output": false,
+      "unsupported_stub_symbols": [],
+      "direct_branch_wrappers": 0,
+      "known_stand_in": false
+    },
+    {
+      "kind": "generated",
+      "name": "IOInterruptDispatchSource.iig.cpp",
+      "sha256": "b9cc580f1754903a52394fd321594234f392e4421a0159eef2eaa3cd52628bcf",
+      "empty_shim_output": false,
+      "unsupported_stub_symbols": [],
+      "direct_branch_wrappers": 0,
+      "known_stand_in": false
+    },
+    {
+      "kind": "generated",
+      "name": "IOMemoryDescriptor.iig.cpp",
+      "sha256": "7fb8e77c85cbb0a075d4e314189331d94cb644eca90ba75091f6df13429fc398",
+      "empty_shim_output": false,
+      "unsupported_stub_symbols": [],
+      "direct_branch_wrappers": 0,
+      "known_stand_in": false
+    },
+    {
+      "kind": "generated",
+      "name": "IOMemoryMap.iig.cpp",
+      "sha256": "5fa81d0c4880a4ad6b48d69c4f8832705848f6ffa1723a34b4fed763b264b87a",
+      "empty_shim_output": false,
+      "unsupported_stub_symbols": [],
+      "direct_branch_wrappers": 0,
+      "known_stand_in": false
+    },
+    {
+      "kind": "generated",
+      "name": "IOService.iig.cpp",
+      "sha256": "07ade382539c44d1a9889dd3986e7ddda6b49ad083457129236d2f179aa60125",
+      "empty_shim_output": false,
+      "unsupported_stub_symbols": [],
+      "direct_branch_wrappers": 0,
+      "known_stand_in": false
+    },
+    {
+      "kind": "generated",
+      "name": "IOServiceNotificationDispatchSource.iig.cpp",
+      "sha256": "f3457ded0e25cdf9832f774de84de2b7ace7598606baf007e2110fba0adf8c83",
+      "empty_shim_output": false,
+      "unsupported_stub_symbols": [],
+      "direct_branch_wrappers": 0,
+      "known_stand_in": false
+    },
+    {
+      "kind": "generated",
+      "name": "IOServiceStateNotificationDispatchSource.iig.cpp",
+      "sha256": "2c96b9afa88693fcda629d2b0487834cc633b5ddd0716a20990a4a5efd7bd1d7",
+      "empty_shim_output": false,
+      "unsupported_stub_symbols": [],
+      "direct_branch_wrappers": 0,
+      "known_stand_in": false
+    },
+    {
+      "kind": "generated",
+      "name": "IOUserClient.iig.cpp",
+      "sha256": "17314d07453be4e9061145bd80aaa96508faff595ea0fa24bda8b90c6efc9e90",
+      "empty_shim_output": false,
+      "unsupported_stub_symbols": [],
+      "direct_branch_wrappers": 0,
+      "known_stand_in": false
+    },
+    {
+      "kind": "generated",
+      "name": "IOUserServer.iig.cpp",
+      "sha256": "3b7b31944c357964b2463517844d0dc1ddec0da7a0693c5e82392734eac2276e",
+      "empty_shim_output": false,
+      "unsupported_stub_symbols": [],
+      "direct_branch_wrappers": 0,
+      "known_stand_in": false
+    },
+    {
+      "kind": "generated",
+      "name": "IOWorkGroup.iig.cpp",
+      "sha256": "4e0289243d453c946a5eadc5296ff68b68e75f296b15d92929f10b47026ccec2",
+      "empty_shim_output": false,
+      "unsupported_stub_symbols": [],
+      "direct_branch_wrappers": 0,
+      "known_stand_in": false
+    },
+    {
+      "kind": "generated",
+      "name": "OSAction.iig.cpp",
+      "sha256": "e996bb408071562a993616a245a49bd1482d068efe57f14a4768c16a4103cf60",
+      "empty_shim_output": false,
+      "unsupported_stub_symbols": [],
+      "direct_branch_wrappers": 0,
+      "known_stand_in": false
+    },
+    {
+      "kind": "generated",
+      "name": "OSObject.iig.cpp",
+      "sha256": "d2ccdb58b0ec7331ea24c7bc034ac544f63103ba0674f8785c42bdb60e533ade",
+      "empty_shim_output": false,
+      "unsupported_stub_symbols": [],
+      "direct_branch_wrappers": 0,
+      "known_stand_in": false
+    },
+    {
+      "kind": "replacement",
+      "name": "IOBufferMemoryDescriptor.iig.cpp",
+      "sha256": "4af517065cf6c454f990569527f8f499e601adacfd0bc37adf561e809448706b",
+      "empty_shim_output": false,
+      "unsupported_stub_symbols": [],
+      "direct_branch_wrappers": 0,
+      "known_stand_in": false
+    },
+    {
+      "kind": "replacement",
+      "name": "IODMACommand.iig.cpp",
+      "sha256": "49b661eb5a46123bd65ac8137bf3fe5949c4ac3f944aefb5c8859b90b429d879",
+      "empty_shim_output": false,
+      "unsupported_stub_symbols": [],
+      "direct_branch_wrappers": 0,
+      "known_stand_in": false
+    },
+    {
+      "kind": "replacement",
+      "name": "IODataQueueDispatchSource.iig.cpp",
+      "sha256": "a0604b51283e7e7e29389fe87aa1bba36be516e5ef9059844c0966ccc1e1c43a",
+      "empty_shim_output": false,
+      "unsupported_stub_symbols": [],
+      "direct_branch_wrappers": 0,
+      "known_stand_in": false
+    },
+    {
+      "kind": "replacement",
+      "name": "IODispatchQueue.iig.cpp",
+      "sha256": "0360a81bf7bb0924b3d48acf02b674440c46843c9e9c6629794d7052a95462ee",
+      "empty_shim_output": false,
+      "unsupported_stub_symbols": [],
+      "direct_branch_wrappers": 0,
+      "known_stand_in": false
+    },
+    {
+      "kind": "replacement",
+      "name": "IODispatchSource.iig.cpp",
+      "sha256": "1570740d35d7dcdb85410b06344b8433f9feb746a8559eb0e0218b6268827a86",
+      "empty_shim_output": false,
+      "unsupported_stub_symbols": [],
+      "direct_branch_wrappers": 0,
+      "known_stand_in": false
+    },
+    {
+      "kind": "replacement",
+      "name": "IOEventLink.iig.cpp",
+      "sha256": "250b17bbeacc56815b73e984014c44aa745b7d87c69cf17b98d3f8c07f4f5690",
+      "empty_shim_output": false,
+      "unsupported_stub_symbols": [],
+      "direct_branch_wrappers": 0,
+      "known_stand_in": false
+    },
+    {
+      "kind": "replacement",
+      "name": "IOInterruptDispatchSource.iig.cpp",
+      "sha256": "b9cc580f1754903a52394fd321594234f392e4421a0159eef2eaa3cd52628bcf",
+      "empty_shim_output": false,
+      "unsupported_stub_symbols": [],
+      "direct_branch_wrappers": 0,
+      "known_stand_in": false
+    },
+    {
+      "kind": "replacement",
+      "name": "IOMemoryDescriptor.iig.cpp",
+      "sha256": "7fb8e77c85cbb0a075d4e314189331d94cb644eca90ba75091f6df13429fc398",
+      "empty_shim_output": false,
+      "unsupported_stub_symbols": [],
+      "direct_branch_wrappers": 0,
+      "known_stand_in": false
+    },
+    {
+      "kind": "replacement",
+      "name": "IOMemoryMap.iig.cpp",
+      "sha256": "5fa81d0c4880a4ad6b48d69c4f8832705848f6ffa1723a34b4fed763b264b87a",
+      "empty_shim_output": false,
+      "unsupported_stub_symbols": [],
+      "direct_branch_wrappers": 0,
+      "known_stand_in": false
+    },
+    {
+      "kind": "replacement",
+      "name": "IOService.iig.cpp",
+      "sha256": "07ade382539c44d1a9889dd3986e7ddda6b49ad083457129236d2f179aa60125",
+      "empty_shim_output": false,
+      "unsupported_stub_symbols": [],
+      "direct_branch_wrappers": 0,
+      "known_stand_in": false
+    },
+    {
+      "kind": "replacement",
+      "name": "IOServiceNotificationDispatchSource.iig.cpp",
+      "sha256": "f3457ded0e25cdf9832f774de84de2b7ace7598606baf007e2110fba0adf8c83",
+      "empty_shim_output": false,
+      "unsupported_stub_symbols": [],
+      "direct_branch_wrappers": 0,
+      "known_stand_in": false
+    },
+    {
+      "kind": "replacement",
+      "name": "IOServiceStateNotificationDispatchSource.iig.cpp",
+      "sha256": "2c96b9afa88693fcda629d2b0487834cc633b5ddd0716a20990a4a5efd7bd1d7",
+      "empty_shim_output": false,
+      "unsupported_stub_symbols": [],
+      "direct_branch_wrappers": 0,
+      "known_stand_in": false
+    },
+    {
+      "kind": "replacement",
+      "name": "IOUserClient.iig.cpp",
+      "sha256": "17314d07453be4e9061145bd80aaa96508faff595ea0fa24bda8b90c6efc9e90",
+      "empty_shim_output": false,
+      "unsupported_stub_symbols": [],
+      "direct_branch_wrappers": 0,
+      "known_stand_in": false
+    },
+    {
+      "kind": "replacement",
+      "name": "IOUserServer.iig.cpp",
+      "sha256": "3b7b31944c357964b2463517844d0dc1ddec0da7a0693c5e82392734eac2276e",
+      "empty_shim_output": false,
+      "unsupported_stub_symbols": [],
+      "direct_branch_wrappers": 0,
+      "known_stand_in": false
+    },
+    {
+      "kind": "replacement",
+      "name": "IOWorkGroup.iig.cpp",
+      "sha256": "4e0289243d453c946a5eadc5296ff68b68e75f296b15d92929f10b47026ccec2",
+      "empty_shim_output": false,
+      "unsupported_stub_symbols": [],
+      "direct_branch_wrappers": 0,
+      "known_stand_in": false
+    },
+    {
+      "kind": "replacement",
+      "name": "OSAction.iig.cpp",
+      "sha256": "e996bb408071562a993616a245a49bd1482d068efe57f14a4768c16a4103cf60",
+      "empty_shim_output": false,
+      "unsupported_stub_symbols": [],
+      "direct_branch_wrappers": 0,
+      "known_stand_in": false
+    },
+    {
+      "kind": "replacement",
+      "name": "OSObject.iig.cpp",
+      "sha256": "d2ccdb58b0ec7331ea24c7bc034ac544f63103ba0674f8785c42bdb60e533ade",
+      "empty_shim_output": false,
+      "unsupported_stub_symbols": [],
+      "direct_branch_wrappers": 0,
+      "known_stand_in": false
+    }
+  ],
+  "limitation": "Known-marker audit only; no completeness, ABI or runtime certification."
+}

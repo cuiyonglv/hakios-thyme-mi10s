@@ -28,6 +28,14 @@ def generate(definition, header, implementation, cache):
     if len(rows) != 17 or len({r['definition'] for r in rows}) != 17:
         raise ValueError('expected 17 distinct generation records')
     definition = Path(definition).resolve()
+    # Definitions include each other. A changed OSObject.iig also invalidates
+    # IOService output, even when IOService.iig itself has not changed.
+    for dependency in rows:
+        relative = Path(dependency['definition'])
+        if str(relative.parent) != 'iokit/DriverKit' or relative.suffix != '.iig':
+            raise ValueError('unexpected recorded definition path')
+        if sha((definition.parent / relative.name).read_bytes()) != dependency['input_sha256']:
+            raise ValueError('definition set changed; native regeneration required')
     key = 'iokit/DriverKit/' + definition.name
     matches = [row for row in rows if row['definition'] == key]
     if len(matches) != 1:

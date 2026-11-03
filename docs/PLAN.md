@@ -32,7 +32,7 @@ EFI文件头。通过只表示这些输入一致，不验证发布者身份或�
 
 ### 当前执行顺序与停止条件
 
-1. **先查生成工具，再修内核导出。** 当前实际构建依赖的`host/bin/iig`是替代脚本：
+1. **先查生成工具，再修内核导出。** 最初实际构建依赖的`host/bin/iig`是替代脚本：
    复制SDK预生成头文件；有`iig-impl/<name>.iig.cpp`时复制实现，否则生成空翻译单元。
    已实查`IOService.iig.cpp`只有一行“no DriverKit implementation generated”注释。
    因此优先盘点各类生成实现是否完整、版本是否匹配，并核对同版本声明和RPC调用语义。
@@ -44,8 +44,12 @@ EFI文件头。通过只表示这些输入一致，不验证发布者身份或�
    [依赖审计记录](reports/iig-dependencies.json)包含输入哈希和占位符号列表。
    可重复扫描实际生成目录和替代实现目录：
    `python3 scripts/audit-iig-inputs.py --generated-dir <DriverKit生成目录> --replacement-dir <iig-impl目录> --out <报告.json>`。
-   当前输入实测退出1并阻止通过；[逐文件报告](reports/iig-input-files.json)记录了18份输入。
+   旧输入实测退出1并阻止通过；[历史报告](reports/iig-input-files.json)记录了18份输入。
    该工具只识别已知占位标记，未检出标记也不能代替ABI、完整构建和运行验证。
+   现在已使用原生Apple IIG生成并校验17组头文件/实现，实际make通过
+   `scripts/cached-apple-iig.py`重建全部生成单元，不再使用旧OSObject占位集合。
+   [当前逐文件报告](reports/iig-native-input-files.json)未检出已知占位标记。
+   原导出审计从129项减少到35项；完整make仍未通过，详见下文。
 2. **独立推进恢复材料。** 官方包仍在分块下载，未完整校验前不能用于恢复；完成后再核对
    当前系统版本、包内引导文件和恢复方式。官方包不能代替本机独有分区备份。
 3. **先设计版本化布局，再修持久化。** 现组合越界8,177,904字节；先明确各区域、容量、
@@ -66,9 +70,9 @@ EFI文件头。通过只表示这些输入一致，不验证发布者身份或�
 | 实际存储恢复路径 | 生产归档保存/恢复已在主机稀疏文件验证 | 补齐Darwin元数据与设备握手；明确恢复失败策略，避免半恢复后继续启动 |
 
 当前内核审计使用实际构建的`nm -gj`符号表与七组通用/arm64导出声明：
-22,580个已定义符号、5,638项声明，缺失129项：IOKit 89、Libkern 2、Private 3、
-Private.arm64 35。其中91项的解码名称涉及IORPC/Invoke/Dispatch；这是分类线索，
-不是“全部都是同一个问题”的结论。
+22,784个已定义符号、5,638项声明，缺失35项，全部位于Private.arm64。
+原生Apple IIG生成代码已补齐原来的IOKit/Libkern/通用Private导出缺口；
+实际低优先级make已重新生成和编译全部17个单元，并生成新符号表。
 初次审计为131项；本次已在非`XNU_MONITOR`配置实现两个能力查询：
 `pmap_has_iofilter_protected_write=false`，对应受保护写操作仍panic；
 `pmap_cs_configuration=0`只表示不报告该配置子集，不能解释成安全策略处于默认或安全状态。
@@ -84,13 +88,19 @@ Private.arm64 35。其中91项的解码名称涉及IORPC/Invoke/Dispatch；这�
 [原始清单与输入哈希](reports/kernel-exports.json)保留了每条声明的位置和解码结果。
 规则来源为[同版本XNU的kextsymboltool](https://github.com/apple-oss-distributions/xnu/blob/c54f35ca767986246321eb901baf8f5ff7923f6a/SETUP/kextsymboltool/kextsymboltool.c)。
 
-进一步分类发现34项缺失包装能在已定义符号中找到相应`_Impl`，例如
-`IOService::CopyName_Impl`、`StringFromReturn_Impl`与`IOMemoryMap::_CopyState_Impl`。
-它们只是候选对应关系，尚须核对函数签名、supermethod/RPC语义和调用方；
-审计仍把缺失包装算作缺失，不将候选关系算为实现成功。
+生成源、原始定义哈希、工具版本及生成CI见
+[源缓存说明](../tools/apple-iig-8796/README.md)。PureDarwin试验虽可链接，但其RPC
+参数顺序和序列化对象描述符与Apple不同，已弃用，没有混入当前生成代码。
 
-下一项具体工作：核对IIG生成代码与真实`_Impl`实现，分清DriverKit包装缺口和
-Apple平台专用接口，不把`kIOReturnUnsupported`空桩当作已经实现功能。
+另发现Linux主机构建兼容问题：Apple的kextsymboltool要求输出文件支持定位，
+Linux的`/dev/null`定位始终返回0，导致合法导出也报“couldn't write output: Success”。
+`scripts/linux-kextsymboltool.py`仅将丢弃输出换为私有临时普通文件，保留原工具、
+全部参数检查和退出码。原工具合法输入失败、包装后合法输入成功、缺失导出仍失败，
+均已实际验证。设置`KEXTSYMBOLTOOL_REAL`指向原SETUP二进制，并将make的
+`KEXT_CREATE_SYMBOL_SET`设为该可执行脚本路径。完整make现在仅剩35项平台接口错误。
+
+下一项具体工作：核对这35项Apple平台接口与本机驱动及可加载组件的依赖，
+形成明确的thyme导出契约；不能根据缺失清单自动删除声明或填成功空桩。
 审计工具为`scripts/audit-kernel-exports.py`，发现缺失时退出非零，不修改导出表。
 
 旧素材快照越过保存区起点8,177,904字节，本轮素材大小规划为8,177,952字节。

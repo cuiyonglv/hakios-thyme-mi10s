@@ -23,6 +23,10 @@ with tempfile.TemporaryDirectory() as directory:
     fixture_cache = work / 'cache'
     fixture_cache.mkdir()
     row = next(r for r in record['generations'] if r['definition'].endswith('/OSObject.iig'))
+    for dependency in record['generations']:
+        path = work / Path(dependency['definition']).name
+        path.write_bytes(b'fixture dependency\n')
+        dependency['input_sha256'] = hashlib.sha256(path.read_bytes()).hexdigest()
     definition = work / 'OSObject.iig'
     definition.write_bytes(b'fixture: known input bytes\n')
     row['input_sha256'] = hashlib.sha256(definition.read_bytes()).hexdigest()
@@ -49,6 +53,11 @@ with tempfile.TemporaryDirectory() as directory:
     assert run().returncode != 0
     assert (header.read_bytes(), implementation.read_bytes()) == original
     shutil.copyfile(cache / 'OSObject.iig.cpp', fixture_cache / 'OSObject.iig.cpp')
+    dependency = work / 'IOService.iig'
+    dependency.write_bytes(b'changed included definition\n')
+    assert run().returncode != 0
+    assert (header.read_bytes(), implementation.read_bytes()) == original
+    dependency.write_bytes(b'fixture dependency\n')
     header = definition
     assert run().returncode != 0
     assert definition.read_bytes() == b'fixture: known input bytes\n'
