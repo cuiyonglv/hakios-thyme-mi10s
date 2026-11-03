@@ -63,6 +63,7 @@ int main(void) {
     restore(ENT_HARDLINK,"copy","db/settings",11);
     struct stat a,b;assert(stat(ROOT "/copy",&a)==0&&stat(ROOT "/db/settings",&b)==0);
     assert(a.st_ino==b.st_ino);
+    entry(ENT_DIR,"db/settings",11,NULL,0);assert(!unpack_one(1));
     /* Root metadata emitted by pack_tree must remain a valid no-op entry. */
     entry(ENT_DIR,"",0,NULL,0);assert(unpack_one(0));
     entry(ENT_DIRTIME,"",0,NULL,0);assert(unpack_one(0));

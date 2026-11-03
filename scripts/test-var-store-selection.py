@@ -30,6 +30,8 @@ mocks = r'''
 static uint8_t heads[SLOTS][BLOCK], payloads[SLOTS][96];
 static uint64_t applied, made_dirs, made_files, made_bytes, made_links, short_files, lost_bytes;
 static int apply_error;
+#define RETRY_MS 2000
+static uint64_t retry_ms_left;
 static off_t slot_at(int slot) { return slot * SLOT_BYTES; }
 static int device_read(off_t where, void *into, uint64_t length) {
     int slot = (int)(where / SLOT_BYTES);

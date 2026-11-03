@@ -50,6 +50,17 @@ static ssize_t host_getdirentries(int f,char *p,size_t n,off_t *at) {
     return getdirentries(f,p,n,at);
 }
 #define getdirentries host_getdirentries
+static int restore_open_error, restore_write_error;
+static int host_open(const char *p,int flags,int mode) {
+    if(restore_open_error && (flags & O_WRONLY)){errno=EACCES;return -1;}
+    return open(p,flags,mode);
+}
+static ssize_t host_write(int f,const void *p,size_t n) {
+    if(restore_write_error){errno=ENOSPC;return -1;}
+    return write(f,p,n);
+}
+#define open host_open
+#define write host_write
 '''
 suffix = r'''
 static unsigned char content[40001], restored[40001];
@@ -63,7 +74,7 @@ static void clear_tree(void) {
     assert(rmdir(ROOT "/db")==0);
 }
 static void check_content(unsigned seed) {
-    int f=open(ROOT "/db/data",O_RDONLY);assert(f>=0);
+    int f=open(ROOT "/db/data",O_RDONLY,0);assert(f>=0);
     assert(read(f,restored,sizeof(restored))==sizeof(restored));close(f);
     for(unsigned i=0;i<sizeof(restored);i++)assert(restored[i]==(i*37+seed)%251);
     struct stat a,b;assert(stat(ROOT "/db/data",&a)==0&&stat(ROOT "/db/hard",&b)==0);
@@ -101,6 +112,11 @@ int main(void) {
         clear_tree();assert(load());check_content(1);
     }
     write_content(4);assert(save());assert(newest_verified(&h)==1&&h.generation==2);
+    clear_tree();assert(load());check_content(4);
+    /* A restore that cannot create or finish a file must not report success. */
+    clear_tree();restore_open_error=1;assert(!load());restore_open_error=0;
+    clear_tree();assert(load());check_content(4);
+    clear_tree();restore_write_error=1;assert(!load());restore_write_error=0;
     clear_tree();assert(load());check_content(4);
     /* An unchanged save remains a valid archive and retains skip semantics. */
     assert(save());assert(newest_verified(&h)==0&&h.generation==3);

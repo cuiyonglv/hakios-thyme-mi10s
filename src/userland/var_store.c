@@ -1009,12 +1009,19 @@ unpack_one(int make)
 		case ENT_DIR:
 			if (mkdir(path, (int)e.mode) == 0) {
 				made_dirs++;
+			} else {
+				struct stat existing;
+				if (lstat(path, &existing) != 0 ||
+				    (existing.st_mode & S_IFMT) != S_IFDIR) {
+					return 0;
+				}
 			}
 			break;
 		case ENT_FILE:
 			out_fd = open(path, O_WRONLY | O_CREAT | O_TRUNC, (int)e.mode);
 			if (out_fd < 0) {
 				printf("var_store: %s cannot be made: %s\n", path, strerror(errno));
+				return 0;
 			} else {
 				made_files++;
 			}
@@ -1231,6 +1238,8 @@ load(void)
 		    (unsigned long long)h.generation);
 	}
 	printf("var_store: restoring the validated archive\n");
+	made_dirs = made_files = made_links = made_bytes = short_files = lost_bytes = 0;
+	retry_ms_left = RETRY_MS;
 	if (!pass(&h, 1)) {
 		printf("var_store: the archive read differently the second time: what was made stays\n");
 		return 0;
@@ -1241,6 +1250,7 @@ load(void)
 	if (short_files != 0) {
 		printf("var_store: %llu files did not fit: %llu bytes of them are not there\n",
 		    (unsigned long long)short_files, (unsigned long long)lost_bytes);
+		return 0;
 	}
 	return 1;
 }
