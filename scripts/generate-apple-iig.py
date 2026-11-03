@@ -67,7 +67,9 @@ def main():
         raise SystemExit('expected exactly 17 XNU 8796 definitions')
     flags = ['-I' + str(source / directory)
              for directory in ('iokit', 'osfmk', 'bsd', 'EXTERNAL_HEADERS')]
-    flags += ['-isysroot', sdk, '-target', 'arm64-apple-macos13.0', '-x', 'c++',
+    # IIG sets its own architecture; passing clang's -target conflicts with it.
+    # Match the XNU DriverKit Makefile instead of injecting a second target.
+    flags += ['-isysroot', sdk, '-x', 'c++',
               '-std=gnu++1z', '-D__IIG=1', '-DDRIVERKIT_PRIVATE=1', '-DPRIVATE_WIFI_ONLY=1']
     record['compiler_flags'] = flags
     for definition in definitions:
