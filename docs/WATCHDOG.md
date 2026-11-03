@@ -61,3 +61,10 @@ MIDR implementer/part, display geometry/base and SCM interface before any read,
 accepts no address argument, and refuses to run while a kernel session is active.
 It neither arms the physical watchdog nor changes any of its registers. This
 diagnostic is intended only for the matching, separately verified thyme UEFI map.
+
+Phone readback with loader `72510662425ca7e8c818c9798dbba6f493d40319` passed the
+profile checks and returned ENABLE=0, STATUS=0, BARK=`0x7ffff`, BITE=`0xfffff`.
+The register page is accessible from the resident loader and the physical
+watchdog was disabled during this observation. Retrieval of the log and a normal
+cold reset to original Android slot B also passed. No watchdog registers were
+changed and this was not an expiry test.
