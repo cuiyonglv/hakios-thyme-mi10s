@@ -1,5 +1,8 @@
 # hakios-thyme — Hakios on the Xiaomi Mi 10S (thyme / Snapdragon 870)
 
+本开发分支正在完善小米10S移植，当前不具备正式安装条件。
+请先看[推进计划](docs/PLAN.md)和[验收状态](docs/ACCEPTANCE.md)；下方原始移植记录不代表本机已经通过验收。
+
 [中文说明](#中文说明) · [Status](#status) · [Architecture](#architecture) · [Repository layout](#repository-layout) · [Legal](#legal-and-attribution)
 
 A port of [Hakios](https://github.com/DBC1349/hackios-mi10ultra) — unmodified iOS 16.5 userland

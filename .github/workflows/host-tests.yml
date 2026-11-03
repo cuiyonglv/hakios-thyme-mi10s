@@ -22,3 +22,5 @@ jobs:
         run: python3 scripts/test-loader-log-buffer.py
       - name: Persistence slot selection and fallback
         run: python3 scripts/test-var-store-selection.py
+      - name: Kernel export audit semantics
+        run: python3 scripts/test-kernel-export-audit.py
