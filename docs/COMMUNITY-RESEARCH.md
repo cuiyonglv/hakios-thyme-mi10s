@@ -66,6 +66,18 @@ persistence writes and limit a session to 120 seconds.
 
 ## Next investigations
 
+New source lead (2026-11-03): [PureDarwin/iig-tools](https://github.com/PureDarwin/iig-tools)
+at `28010c688caab7eb5400b9c98faa5b1e538e0108` is a BSD-3-Clause kernel-side
+generator that builds on Linux. It was compiled locally and generated nonempty
+IOService header/implementation files from the same XNU source. This is a possible
+replacement for empty generated translation units, not a validated ABI replacement.
+Its [code generator](https://github.com/PureDarwin/iig-tools/blob/28010c688caab7eb5400b9c98faa5b1e538e0108/src/codegen.cpp)
+explicitly assigns its own FNV-based message IDs and warns against mixing headers
+with Apple-generated ones; the parser also discards class-body conditional guards.
+Next experiment must retain reviewed SDK declarations/IDs and check actual compile,
+message layout, conditional methods and dispatch semantics. Do not install its default
+generated headers into this port or treat generated output as Apple ABI compatibility.
+
 - Instrument restore phases (slot header, checksum pass, unpack and last entry)
   and collect phone logs before choosing a timeout/recovery policy. A timeout
   that merely starts launchd over a half-restored var is not sufficient.

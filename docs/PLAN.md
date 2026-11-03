@@ -189,6 +189,13 @@ EFI模拟服务不再以共享表内可变块大小决定物理写入单位；�
   记录提交、脏状态、编译参数、输入和产物哈希。示例：
   `python3 scripts/build-guarded-userland.py --init <外部init.c> --mini-dir <外部libmini目录> --clang clang-18 --ld64 <cctools的ld> --out-dir <全新本地目录>`。
   已实际交叉链接两个程序；尚须将它们集成到版本/布局匹配的镜像，再验证实机恢复。
+- `scripts/stage-root-image.py`已实际生成包含匹配init/var_store的私有4MiB root APFS。
+  先校验干净用户态构建及全部固定输入/产物哈希，再真实复制模板、原子替换两个程序；
+  不复用可能被截断的模板硬链接。`apfsck -cw`通过，独立APFS读取器回读459个条目
+  与目录一致，并以SHA-256核对两份可执行文件；模板前后清单相同。
+  这是根镜像组件验收，不是完整内核或手机验收，系统镜像/固件/引导包仍须匹配。
+  必须在与构建记录字节一致的Linux检出运行，换行或输入内容不同会被拒绝。
+  例：`python3 scripts/stage-root-image.py --template <原root目录> --userland-build <干净构建目录> --apfs-tools <外部tools/apfs> --out-dir <新输出目录>`。
 
 - 已有多项源码修复、可链接内核及通过的主机回归；尚无本机验收合格的安装镜像。
 - 充电、真实联网、音频、GPU/触摸稳定性、重启恢复均未在本机移植系统下验收。
