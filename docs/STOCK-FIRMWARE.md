@@ -38,7 +38,23 @@ The mapper now selects that file and refuses a missing file without falling back
 to another phone's board data. The host test runs the actual C mapper and rejects
 the old UMI selection. This does not prove that the radio boots or joins a network.
 
-Next: stage the correct firmware into the matching system image, build/audit the
+The initial root template also had **no firmware directory**, so its GPU profile
+selector could not find the A650 files at all. The official sparse super image was
+decoded locally and its `vendor_a` partition extracted with an AOSP-based read-only
+unpacker. The four A650 files came from that partition's `/firmware`; the four
+QCA6390 files came from the stock FAT firmware image. They form a private eight-file
+cohort, with sizes, SHA-256 hashes and the source archive MD5 in its manifest.
+
+`scripts/stage-root-image.py --firmware /private/cohort ...` now inserts that cohort
+as `/fw` in the small RAM disk, where the actual kernel image reader expects it.
+It rejects missing/changed files, another target's board data, symlink parents and
+a nonempty existing firmware directory. The eight firmware files are read back
+from the finished APFS and checked byte for byte along with init and var_store.
+The existing `--plain fw` setting keeps firmware uncompressed for the early kernel
+reader. An offline manifest is input consistency evidence, not proof of a live
+phone match or permission to transmit with an untested radio.
+
+Next: verify the resulting root image, build/audit the
 optional ath11k adaptation, review the phone-specific UEFI drivers, and obtain
 the connected phone's current firmware/unique-partition backups before an iOS boot
 or storage experiment.

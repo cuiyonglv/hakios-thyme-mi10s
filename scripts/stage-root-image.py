@@ -19,6 +19,9 @@ import subprocess
 import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
+FIRMWARE_FILES = {'fw/a650_gmu.bin', 'fw/a650_sqe.fw', 'fw/a650_zap.mdt', 'fw/a650_zap.b02',
+                  'fw/qca6390/amss20.bin', 'fw/qca6390/m3.bin',
+                  'fw/qca6390/bd_j2s.elf', 'fw/qca6390/regdb.bin'}
 
 
 def digest(path):
@@ -30,6 +33,53 @@ def load_module(name, path):
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
+
+
+def checked_firmware(directory):
+    """Offline consistency, not publisher authentication or live phone matching."""
+    directory = Path(directory).resolve()
+    manifest = directory / 'manifest.json'
+    if not stat.S_ISREG(manifest.lstat().st_mode):
+        raise ValueError('firmware manifest must be a regular file')
+    record = json.loads(manifest.read_text())
+    if (record.get('schema') != 1 or record.get('target') != 'thyme' or
+            record.get('stock_release') != 'OS1.0.4.0.TGACNXM' or
+            record.get('source_archive_md5') != '778cda43017aacde0d7a04ff85b872f8' or
+            set(record.get('files', {})) != FIRMWARE_FILES):
+        raise ValueError('unexpected firmware cohort; require the eight reviewed thyme GPU/WiFi files')
+    total = 0
+    for relative, expected in record['files'].items():
+        path = directory / relative
+        for parent in path.relative_to(directory).parents:
+            if not stat.S_ISDIR((directory / parent).lstat().st_mode):
+                raise ValueError('firmware parents must be real directories')
+        metadata = path.lstat()
+        if (not stat.S_ISREG(metadata.st_mode) or not 0 < metadata.st_size <= 16 * 1024 * 1024 or
+                metadata.st_size != expected['bytes'] or digest(path) != expected['sha256']):
+            raise ValueError('firmware file changed: ' + relative)
+        total += metadata.st_size
+    if total > 16 * 1024 * 1024:
+        raise ValueError('firmware cohort exceeds the reviewed RAM-image budget')
+    return record
+
+
+def stage_firmware(tree, directory, record):
+    if checked_firmware(directory) != record:
+        raise ValueError('firmware cohort changed after verification')
+    destination = tree / 'fw'
+    if destination.is_symlink() or (destination.exists() and
+            (not destination.is_dir() or any(destination.iterdir()))):
+        raise ValueError('template fw must be absent or an empty real directory; do not mix firmware cohorts')
+    destination.mkdir(exist_ok=True)
+    (destination / 'qca6390').mkdir()
+    for relative in sorted(FIRMWARE_FILES):
+        data = (directory / relative).read_bytes()
+        expected = record['files'][relative]
+        if len(data) != expected['bytes'] or hashlib.sha256(data).hexdigest() != expected['sha256']:
+            raise ValueError('firmware changed while copying: ' + relative)
+        with (tree / relative).open('xb') as stream:
+            stream.write(data)
+        (tree / relative).chmod(0o644)
 
 
 def checked_userland(directory):
@@ -93,6 +143,8 @@ def main():
     parser.add_argument('--userland-build', type=Path, required=True)
     parser.add_argument('--apfs-tools', type=Path, required=True)
     parser.add_argument('--out-dir', type=Path, required=True)
+    parser.add_argument('--firmware', type=Path,
+                        help='optional private eight-file thyme firmware cohort with manifest.json')
     args = parser.parse_args()
     try:
         template = args.template.resolve()
@@ -100,6 +152,8 @@ def main():
             raise ValueError('output directory exists; choose a new directory')
         if template == args.out_dir.resolve() or template in args.out_dir.resolve().parents:
             raise ValueError('output must not be inside the source template')
+        if args.firmware and args.out_dir.resolve().is_relative_to(args.firmware.resolve()):
+            raise ValueError('output must not be inside the firmware source')
         for name in ('sbin', 'bin', 'LaunchDaemons'):
             if not stat.S_ISDIR((template / name).lstat().st_mode):
                 raise ValueError(f'template {name} must be a real directory')
@@ -109,6 +163,7 @@ def main():
                 plist.get('RunAtLoad') is not True or plist.get('KeepAlive')):
             raise ValueError('unexpected autosaver launchd job')
         userland = checked_userland(args.userland_build)
+        firmware = checked_firmware(args.firmware) if args.firmware else None
         before = inventory(template)
         tool_root = args.apfs_tools.resolve().parents[1]
         reader = tool_root / 'apfs-work/apfs-tool'
@@ -121,6 +176,8 @@ def main():
             tree = staging / 'root'
             # These are real copies: no subsequent write can truncate a donor hard link.
             shutil.copytree(template, tree, symlinks=True)
+            if firmware:
+                stage_firmware(tree, args.firmware.resolve(), firmware)
             for name, relative in (('init', 'sbin/init'), ('var_store', 'bin/var_store')):
                 destination = tree / relative
                 with tempfile.NamedTemporaryFile(dir=staging, delete=False) as stream:
@@ -142,6 +199,13 @@ def main():
                 restored = subprocess.check_output([str(reader), 'cat', str(image), relative])
                 if hashlib.sha256(restored).hexdigest() != userland['artifact_sha256'][name]:
                     raise ValueError('APFS executable readback differs from the checked build')
+            if firmware:
+                for relative, expected in firmware['files'].items():
+                    restored = subprocess.check_output([str(reader), 'cat', str(image), '/' + relative])
+                    if len(restored) != expected['bytes'] or hashlib.sha256(restored).hexdigest() != expected['sha256']:
+                        raise ValueError('APFS firmware readback differs: ' + relative)
+                if checked_firmware(args.firmware) != firmware:
+                    raise ValueError('firmware inputs changed during image construction')
             if before != inventory(template):
                 raise ValueError('template changed during image construction')
             checked_userland(args.userland_build)
@@ -155,6 +219,8 @@ def main():
                 'mkapfs_sha256': digest(args.apfs_tools / 'mkapfs.py'),
                 'stage_script_sha256': digest(Path(__file__).resolve()),
                 'validation': 'apfsck and independent reader census; executable SHA-256 readback',
+                'firmware': firmware,
+                'firmware_live_phone_match': 'not checked by this offline build',
             }
             (staging / 'build.json').write_text(json.dumps(record, indent=2) + '\n')
             os.rename(staging, args.out_dir)
