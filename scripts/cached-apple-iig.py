@@ -32,7 +32,7 @@ def generate(definition, header, implementation, cache):
     # IOService output, even when IOService.iig itself has not changed.
     for dependency in rows:
         relative = Path(dependency['definition'])
-        if str(relative.parent) != 'iokit/DriverKit' or relative.suffix != '.iig':
+        if relative.parent.as_posix() != 'iokit/DriverKit' or relative.suffix != '.iig':
             raise ValueError('unexpected recorded definition path')
         if sha((definition.parent / relative.name).read_bytes()) != dependency['input_sha256']:
             raise ValueError('definition set changed; native regeneration required')
