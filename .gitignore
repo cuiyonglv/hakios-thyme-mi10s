@@ -28,3 +28,4 @@ out/
 __pycache__/
 *.pyc
 src/loader/identity.h
+src/loader/loader.build.json

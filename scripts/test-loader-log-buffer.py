@@ -12,12 +12,18 @@ source = (root / 'src/loader/loader.c').read_text()
 start = source.index('static void\nwrite_logs(')
 end = source.index('\nstatic void\nflush_log(', start)
 function = source[start:end]
+helper_start = source.index('static efi_status\nstorage_write_blocks(')
+helper = source[helper_start:source.index('\n/* ------------------------------------------------------------------------ */', helper_start)]
 prefix = r'''
 #include <assert.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
+#ifndef THYME_STORAGE_WRITES
+#define THYME_STORAGE_WRITES 1
+#endif
+#define EFI_ERROR_BIT (1ULL << 63)
 typedef uint64_t efi_status;
 #define EFI_ERROR(s) ((s) != 0)
 typedef struct efi_block_io efi_block_io;
@@ -62,6 +68,14 @@ suffix = r'''
 int main(void) {
     memset(block_buffer, 0xa5, sizeof(block_buffer));
     write_logs("boot log", 8);
+    if (!THYME_STORAGE_WRITES) {
+        assert(writes == 0 && reads == 0);
+        assert(memcmp(out_buf, "boot log", 8) == 0);
+        for (unsigned i = 0; i < sizeof(block_buffer); ++i)
+            assert(block_buffer[i] == 0xa5);
+        puts("PASS: read-only loader keeps RAM logs without Block I/O writes");
+        return 0;
+    }
     assert(writes == 1 && reads == 1 && memcmp(disk, "boot log", 8) == 0);
     for (unsigned i = 0; i < sizeof(block_buffer); ++i)
         assert(block_buffer[i] == 0xa5);
@@ -75,11 +89,12 @@ int main(void) {
 }
 '''
 
-def run(code, directory, name):
+def run(code, directory, name, writable=1):
     cfile = directory / (name + '.c')
     binary = directory / name
-    cfile.write_text(prefix + code + suffix)
+    cfile.write_text(prefix + helper + code + suffix)
     subprocess.run([os.environ.get('CC', 'cc'), '-std=gnu11', '-O1',
+                    f'-DTHYME_STORAGE_WRITES={writable}',
                     str(cfile), '-o', str(binary)], check=True)
     return subprocess.run([str(binary)], capture_output=True, text=True, timeout=10)
 
@@ -89,6 +104,10 @@ with tempfile.TemporaryDirectory(prefix='thyme-log-buffer-') as temp:
     print(result.stdout, end='')
     if result.returncode:
         raise SystemExit(result.stderr)
+    readonly = run(function, directory, 'readonly', writable=0)
+    print(readonly.stdout, end='')
+    if readonly.returncode:
+        raise SystemExit(readonly.stderr)
     regression = run(function.replace('log_verify', 'block_buffer'), directory, 'before_fix')
     if regression.returncode == 0 or 'block_buffer' not in regression.stderr:
         raise SystemExit('Regression harness did not detect the original mailbox clobber')

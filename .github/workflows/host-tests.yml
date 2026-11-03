@@ -20,6 +20,10 @@ jobs:
         run: python3 scripts/test-storage-mailbox.py
       - name: Loader log buffer ownership
         run: python3 scripts/test-loader-log-buffer.py
+      - name: Loader direct storage writes are disabled by default
+        run: python3 scripts/test-loader-write-policy.py
+      - name: Loader artifact and build record consistency
+        run: python3 scripts/test-loader-build-record.py
       - name: Persistence slot selection and fallback
         run: python3 scripts/test-var-store-selection.py
       - name: Kernel export audit semantics

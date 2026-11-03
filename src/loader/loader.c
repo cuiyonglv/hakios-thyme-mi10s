@@ -13,6 +13,28 @@
 #include "identity.h"         /* who iOS shall think we are: from the iPhone's own device tree (mkidentity.py) */
 #include "sha256.h"
 
+#ifndef THYME_STORAGE_WRITES
+#define THYME_STORAGE_WRITES 0
+#endif
+#if THYME_STORAGE_WRITES != 0 && THYME_STORAGE_WRITES != 1
+#error "THYME_STORAGE_WRITES must be 0 or 1"
+#endif
+
+/* All direct Block I/O writes in this loader pass through this build policy.
+ * Firmware and kernel write paths require their own independent review. */
+static efi_status
+storage_write_blocks(efi_block_io *bio, uint32_t media_id, uint64_t lba,
+    uint64_t bytes, void *data)
+{
+	if (!THYME_STORAGE_WRITES) {
+		return EFI_ERROR_BIT | 15; /* EFI_ACCESS_DENIED */
+	}
+	if (bio == NULL || bio->media == NULL || bio->write_blocks == NULL) {
+		return EFI_ERROR_BIT | 2; /* EFI_INVALID_PARAMETER */
+	}
+	return bio->write_blocks(bio, media_id, lba, bytes, data);
+}
+
 /* ------------------------------------------------------------------------ */
 /* Fixed conventions shared with the boot shim, the packer and the kernel   */
 
@@ -365,9 +387,13 @@ static void hc_take_back(const char *when);
 static void
 write_logs(const char *klog, uint64_t klog_len)
 {
-	efi_block_io *bio = find_log_partition();
+	efi_block_io *bio;
 
 	compose_logs(klog, klog_len);
+	if (!THYME_STORAGE_WRITES) {
+		return; /* logs remain available over USB, without touching logdump */
+	}
+	bio = find_log_partition();
 	if (bio == NULL) {
 		/* No log partition (QEMU): echo the returned kernel log on the console instead. */
 		if (klog != NULL) {
@@ -393,7 +419,7 @@ write_logs(const char *klog, uint64_t klog_len)
 		compose_logs(klog, klog_len);
 		return;
 	}
-	ws = bio->write_blocks(bio, bio->media->media_id, 0, len, out_buf);
+	ws = storage_write_blocks(bio, bio->media->media_id, 0, len, out_buf);
 
 	if (!EFI_ERROR(ws)) {
 		bio->flush_blocks(bio);
@@ -2167,7 +2193,7 @@ block_poll(void)
 				flush_dcache((uint64_t)(uintptr_t)block_buffer,
 				    (uint64_t)(uintptr_t)block_buffer + bytes);
 				want = ufs_crc32(block_buffer, bytes);
-				s = bio->write_blocks(bio, bio->media->media_id, lba, bytes, block_buffer);
+				s = storage_write_blocks(bio, bio->media->media_id, lba, bytes, block_buffer);
 				if (!EFI_ERROR(s)) {
 					bio->flush_blocks(bio);
 					s = bio->read_blocks(bio, bio->media->media_id, lba, bytes, block_buffer);
@@ -2918,6 +2944,9 @@ run_kernel(int have_checkpoint, uint64_t checkpoint)
 		    (c[11] == 0 || c[11] == ' ');
 		hc_requested |= starts_with(c, "ufs_native=") && (c == pi.cmdline || c[-1] == ' ') && c[11] >= '1' &&
 		    c[11] <= '9';
+	}
+	if (!THYME_STORAGE_WRITES) {
+		block_write_requested = 0;
 	}
 	if (battery_requested) {
 		charger_start();
@@ -3803,6 +3832,9 @@ fb_command(char *cmd)
 			}
 			fb_reply("OKAY", "");
 		} else if (starts_with(cmd, "oem fastboot")) {
+#if !THYME_STORAGE_WRITES
+			fb_reply("FAIL", "misc writes are disabled in this loader build");
+#else
 			/* write Android's boot command block: the next reset goes to the bootloader */
 			efi_block_io *misc = find_partition_bio(u"misc");
 			static char bcb[4096];
@@ -3811,7 +3843,7 @@ fb_command(char *cmd)
 			memset(bcb, 0, sizeof(bcb));
 			memcpy(bcb, "bootonce-bootloader", 20);
 			if (misc != NULL) {
-				st = misc->write_blocks(misc, misc->media->media_id, 0, sizeof(bcb), bcb);
+				st = storage_write_blocks(misc, misc->media->media_id, 0, sizeof(bcb), bcb);
 				if (!EFI_ERROR(st)) {
 					misc->flush_blocks(misc);
 				}
@@ -3820,6 +3852,7 @@ fb_command(char *cmd)
 			flush_log();
 			fb_reply(EFI_ERROR(st) ? "FAIL" : "OKAY", "");
 			reboot();
+#endif
 		} else if (starts_with(cmd, "reboot") || starts_with(cmd, "oem reboot")) {
 			fb_reply("OKAY", "");
 			BS->stall(200000);
