@@ -12,6 +12,10 @@ Two licenses apply, by directory — the same split the base HakiOS project uses
    src/loader/ (the base project's MIT-licensed loader and this port's patch), src/userland/ and
    src/kernel-patches/ — is licensed under the **MIT License** below.
 
+The UEFI map in **src/uefi/Library/MemoryMapLib/** is adapted from
+azzlantern/hackios-thyme and retains that package's **APSL 2.0** license.
+See src/uefi/README.md for the exact source revision and LICENSE.APSL for its text.
+
 Third-party components and their licenses are listed in NOTICE.md. Apple's operating system and its
 firmware images (IPSW), Apple's trademarks, and the phone's own firmware are **not** part of this
 repository and are not licensed by it; every user obtains them from their own device and their own

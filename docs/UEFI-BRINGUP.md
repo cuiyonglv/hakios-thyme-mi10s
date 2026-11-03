@@ -51,8 +51,12 @@ be investigated separately; do not replace the hash to bypass the guard.
 
 The captured `uefiplat.cfg` differs from the UMI reference: its TZApps and PIL
 reservations have different extents and overlap legacy heap descriptions.
-Derive and check a conservative thyme map against the live reserved-memory
-nodes before building or booting UEFI. Do not copy the UMI map unchanged.
+The source map under `src/uefi/Library/MemoryMapLib/` now uses disjoint QTEE,
+TZApps and PIL descriptors derived from those captures, with the actual display
+dump and DDR-hole reservations. Static checks passed 29 disjoint RAM descriptors
+and complete non-conventional coverage of all 22 static live-FDT reservations.
+Original boot-info and log buffers remain reserved. The map still needs the
+complete UEFI build and phone validation; do not treat static checks as a boot.
 
 Use Mu-Silicium `42fe563791e51bf5500c2e470ed294ca0c94b97c` and its exact
 submodule revisions. Match required driver INF GUIDs to the phone's own XBL;
